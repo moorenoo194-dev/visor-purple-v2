@@ -1,0 +1,1228 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Visor - Purple Edition v2.0</title>
+    <style>
+        /* ============================================================
+           ESTILOS GENERALES - MORADO OSCURO
+           ============================================================ */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+        }
+
+        body {
+            background: #1a0a2e;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            width: 100%;
+            background: #2d1b4e;
+            border-radius: 16px;
+            padding: 35px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7), 0 0 80px rgba(120, 50, 200, 0.1);
+            border: 1px solid rgba(180, 100, 255, 0.12);
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 18px;
+            border-bottom: 1px solid rgba(180, 100, 255, 0.12);
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .header h1 {
+            color: #d4b8ff;
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        .header .badge {
+            background: rgba(168, 85, 247, 0.15);
+            color: #c084fc;
+            padding: 5px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            border: 1px solid rgba(168, 85, 247, 0.15);
+        }
+
+        .header .badge-rid {
+            background: rgba(5, 150, 105, 0.15);
+            color: #6ee7b7;
+            padding: 5px 14px;
+            border-radius: 20px;
+            font-size: 13px;
+            border: 1px solid rgba(5, 150, 105, 0.15);
+            font-family: monospace;
+            font-weight: 700;
+            letter-spacing: 1px;
+        }
+
+        .header .badge-online {
+            background: rgba(5, 150, 105, 0.15);
+            color: #6ee7b7;
+            padding: 5px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            border: 1px solid rgba(5, 150, 105, 0.15);
+        }
+
+        .section {
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 12px;
+            padding: 22px 24px;
+            margin-bottom: 24px;
+            border: 1px solid rgba(180, 100, 255, 0.07);
+        }
+
+        .section-title {
+            color: #c084fc;
+            font-weight: 600;
+            font-size: 15px;
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .section-title .rid-auto {
+            background: rgba(251, 191, 36, 0.1);
+            color: #fcd34d;
+            padding: 2px 12px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 400;
+        }
+
+        .section-title .multicuentas-badge {
+            background: rgba(239, 68, 68, 0.15);
+            color: #f87171;
+            padding: 2px 12px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .form-group {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .form-group label {
+            color: #b8a0d8;
+            font-weight: 500;
+            font-size: 14px;
+            min-width: 50px;
+        }
+
+        .form-group input {
+            flex: 1;
+            min-width: 160px;
+            padding: 9px 14px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(180, 100, 255, 0.15);
+            border-radius: 8px;
+            color: #e2d5f5;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #a855f7;
+            box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.12);
+        }
+
+        .form-group input[readonly] {
+            background: rgba(255, 255, 255, 0.03);
+            color: #a885d4;
+            cursor: default;
+        }
+
+        .form-group .rid-display {
+            background: rgba(5, 150, 105, 0.08);
+            border-color: rgba(5, 150, 105, 0.2);
+            color: #6ee7b7;
+            font-family: monospace;
+            font-weight: 700;
+            font-size: 18px;
+            text-align: center;
+            max-width: 120px;
+            flex: 0 0 120px;
+            letter-spacing: 2px;
+        }
+
+        .btn {
+            padding: 9px 22px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.25s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #7c3aed, #6d28d9);
+            color: white;
+            box-shadow: 0 4px 14px rgba(124, 58, 237, 0.25);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 22px rgba(124, 58, 237, 0.35);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.06);
+            color: #c084fc;
+            border: 1px solid rgba(180, 100, 255, 0.12);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #dc2626, #b91c1c);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 22px rgba(220, 38, 38, 0.3);
+        }
+
+        .url-preview {
+            margin-top: 14px;
+            padding: 12px 16px;
+            background: rgba(0, 0, 0, 0.25);
+            border-radius: 8px;
+            border: 1px solid rgba(180, 100, 255, 0.07);
+            font-size: 13px;
+            color: #b8a0d8;
+            font-family: 'Courier New', monospace;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .url-preview .label {
+            color: #7c6a9e;
+            font-weight: 600;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            white-space: nowrap;
+        }
+
+        .url-preview .url-text {
+            color: #c4b0e8;
+            flex: 1;
+            min-width: 150px;
+            word-break: break-all;
+        }
+
+        .url-preview .rid-tag {
+            background: rgba(5, 150, 105, 0.15);
+            color: #6ee7b7;
+            padding: 2px 12px;
+            border-radius: 6px;
+            font-weight: 700;
+            font-size: 14px;
+            font-family: monospace;
+            letter-spacing: 1px;
+            white-space: nowrap;
+        }
+
+        .copy-btn {
+            background: rgba(168, 85, 247, 0.1);
+            border: none;
+            color: #c084fc;
+            padding: 3px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 500;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .copy-btn:hover {
+            background: rgba(168, 85, 247, 0.2);
+        }
+
+        .table-wrapper {
+            margin-top: 16px;
+            overflow-x: auto;
+            border-radius: 10px;
+            border: 1px solid rgba(180, 100, 255, 0.06);
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+
+        thead {
+            background: rgba(168, 85, 247, 0.06);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        th {
+            text-align: left;
+            padding: 10px 12px;
+            color: #b8a0d8;
+            font-weight: 600;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            border-bottom: 1px solid rgba(180, 100, 255, 0.07);
+            white-space: nowrap;
+        }
+
+        td {
+            padding: 10px 12px;
+            color: #d4c8ea;
+            border-bottom: 1px solid rgba(180, 100, 255, 0.04);
+            vertical-align: middle;
+            font-size: 11px;
+        }
+
+        tr:hover td {
+            background: rgba(168, 85, 247, 0.03);
+        }
+
+        tr.multicuentas {
+            background: rgba(239, 68, 68, 0.06);
+        }
+
+        tr.multicuentas:hover td {
+            background: rgba(239, 68, 68, 0.1);
+        }
+
+        .empty-state {
+            text-align: center;
+            color: #6a5a8a;
+            padding: 35px 20px !important;
+            font-style: italic;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 2px 12px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+
+        .badge-ip {
+            background: rgba(168, 85, 247, 0.12);
+            color: #b894f0;
+            font-family: monospace;
+        }
+
+        .badge-country {
+            background: rgba(5, 150, 105, 0.12);
+            color: #6ee7b7;
+        }
+
+        .badge-city {
+            background: rgba(59, 130, 246, 0.12);
+            color: #93bbfc;
+        }
+
+        .badge-device {
+            background: rgba(251, 191, 36, 0.1);
+            color: #fcd34d;
+            font-size: 10px;
+        }
+
+        .flag {
+            font-size: 16px;
+            margin-right: 3px;
+        }
+
+        /* ============================================================
+           INDICADORES DE ESTADO AL LADO DE LA IP
+           ============================================================ */
+        .ip-container {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .status-indicator.limpia {
+            background: #6ee7b7;
+            box-shadow: 0 0 8px rgba(5, 150, 105, 0.3);
+        }
+
+        .status-indicator.multicuenta {
+            background: #f87171;
+            box-shadow: 0 0 8px rgba(239, 68, 68, 0.3);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.6; transform: scale(0.9); }
+        }
+
+        .ip-text {
+            font-family: monospace;
+            color: #b894f0;
+        }
+
+        .tip {
+            background: rgba(168, 85, 247, 0.05);
+            padding: 10px 14px;
+            border-radius: 8px;
+            margin-top: 12px;
+            font-size: 13px;
+            color: #a890c8;
+            border-left: 3px solid #7c3aed;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .tip strong {
+            color: #c084fc;
+        }
+
+        .tip .camuflado {
+            background: rgba(251, 191, 36, 0.1);
+            color: #fcd34d;
+            padding: 2px 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+
+        .tip .rid-example {
+            background: rgba(5, 150, 105, 0.15);
+            color: #6ee7b7;
+            padding: 2px 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-weight: 700;
+            font-size: 14px;
+            letter-spacing: 1px;
+        }
+
+        .loading {
+            text-align: center;
+            color: #7c6a9e;
+            padding: 30px !important;
+        }
+
+        .loading::after {
+            content: '...';
+            animation: dots 1.5s steps(4) infinite;
+        }
+
+        @keyframes dots {
+            0% { content: ''; }
+            25% { content: '.'; }
+            50% { content: '..'; }
+            75% { content: '...'; }
+        }
+
+        .status-bar {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: center;
+            margin-bottom: 10px;
+            font-size: 13px;
+        }
+
+        .status-bar .status-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: #7c6a9e;
+        }
+
+        .status-bar .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .status-bar .status-dot.online {
+            background: #6ee7b7;
+            box-shadow: 0 0 10px rgba(5, 150, 105, 0.3);
+        }
+
+        .status-bar .status-dot.offline {
+            background: #ef4444;
+            box-shadow: 0 0 10px rgba(239, 68, 68, 0.3);
+        }
+
+        .image-preview {
+            margin-top: 14px;
+            padding: 16px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            border: 1px solid rgba(180, 100, 255, 0.07);
+            text-align: center;
+            display: none;
+        }
+
+        .image-preview img {
+            max-width: 100%;
+            max-height: 250px;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .image-preview .preview-label {
+            display: block;
+            margin-top: 8px;
+            color: #7c6a9e;
+            font-size: 12px;
+        }
+
+        .multicuentas-resumen {
+            background: rgba(239, 68, 68, 0.05);
+            border: 1px solid rgba(239, 68, 68, 0.12);
+            border-radius: 8px;
+            padding: 12px 16px;
+            margin-bottom: 12px;
+            display: none;
+            flex-wrap: wrap;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .multicuentas-resumen .item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: #b8a0d8;
+            font-size: 12px;
+        }
+
+        .multicuentas-resumen .item .numero {
+            font-weight: 700;
+            font-size: 16px;
+            color: #f87171;
+        }
+
+        .multicuentas-resumen .item .numero.verde {
+            color: #6ee7b7;
+        }
+
+        .leyenda {
+            display: flex;
+            gap: 15px;
+            font-size: 11px;
+            color: #7c6a9e;
+            margin-top: 8px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .leyenda .dot {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 4px;
+        }
+
+        .leyenda .dot.verde {
+            background: #6ee7b7;
+        }
+
+        .leyenda .dot.rojo {
+            background: #f87171;
+        }
+
+        .generado-automatico {
+            background: rgba(5, 150, 105, 0.06);
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            color: #6ee7b7;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .version-badge {
+            background: rgba(251, 191, 36, 0.15);
+            color: #fcd34d;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 10px;
+            border: 1px solid rgba(251, 191, 36, 0.15);
+        }
+
+        @media (max-width: 768px) {
+            .container { padding: 20px; }
+            .header h1 { font-size: 20px; }
+            th, td { padding: 6px 8px; font-size: 10px; }
+        }
+
+        @media (max-width: 480px) {
+            .container { padding: 14px; }
+            .section { padding: 14px; }
+            .btn { padding: 6px 12px; font-size: 11px; }
+            .form-group .rid-display { flex: 0 0 70px; max-width: 70px; font-size: 14px; }
+            th, td { padding: 4px 6px; font-size: 9px; }
+            .badge { font-size: 8px; padding: 1px 6px; }
+        }
+
+        ::-webkit-scrollbar {
+            width: 5px;
+            height: 5px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(168, 85, 247, 0.25);
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(168, 85, 247, 0.4);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <!-- ===== ENCABEZADO ===== -->
+        <div class="header">
+            <h1>🔮 <span style="color:#a855f7;">Visor</span> <span class="version-badge">v2.0</span></h1>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+                <span class="badge-rid" id="headerRid">🔑 RID: ---</span>
+                <span class="badge">🟣 Purple</span>
+                <span class="badge" style="background:rgba(239,68,68,0.12);color:#f87171;">🔍 Anti-multicuentas</span>
+                <span class="badge-online" id="statusBadge">🔴 Sin servidor</span>
+            </div>
+        </div>
+
+        <!-- ===== SECCIÓN 1: GENERADOR DE URL ===== -->
+        <div class="section">
+            <div class="section-title">
+                <span>🔗</span> Generador de URL
+                <span class="rid-auto">🔄 RID automático</span>
+                <span style="font-size:11px;color:#fcd34d;font-weight:400;margin-left:4px;">
+                    🕵️ Enlace camuflado
+                </span>
+                <span class="multicuentas-badge" id="multicuentasBadge">📱 Detección</span>
+            </div>
+
+            <div class="form-group">
+                <label>RID</label>
+                <input type="text" class="rid-display" id="ridInput" readonly value="---" />
+                <label>IMG</label>
+                <input type="text" id="imgInput" placeholder="Pega la URL de una imagen o GIF..." value="" />
+                <button class="btn btn-primary" onclick="generarURL()">🚀 Generar</button>
+                <button class="btn btn-secondary" onclick="limpiar()">✕ Limpiar</button>
+            </div>
+
+            <div style="margin-top:8px;font-size:12px;color:#7c6a9e;">
+                <span class="generado-automatico">⚡ El RID se genera automáticamente al pegar una imagen</span>
+            </div>
+
+            <div class="url-preview">
+                <span class="label">📎 Enlace camuflado:</span>
+                <span class="url-text" id="urlDisplay">Pega una imagen y pulsa "Generar"</span>
+                <span class="rid-tag" id="urlRidTag">---</span>
+                <button class="copy-btn" onclick="copiarURL()">📋 Copiar</button>
+            </div>
+
+            <!-- Vista previa de la imagen -->
+            <div class="image-preview" id="imagePreview">
+                <img id="previewImg" src="" alt="Vista previa" />
+                <span class="preview-label">⬆️ Vista previa de la imagen que se mostrará</span>
+            </div>
+
+            <div class="tip">
+                <span>🕵️</span>
+                <span>
+                    El enlace generado <strong>parece una imagen normal</strong> pero registrará la visita.
+                    <span class="camuflado">/i/RID/IMAGEN_CODIFICADA.jpg</span>
+                </span>
+                <span style="margin-left:auto;font-size:12px;color:#7c6a9e;">
+                    🔑 RID: <span class="rid-example" id="tipRidExample">---</span>
+                </span>
+            </div>
+        </div>
+
+        <!-- ===== SECCIÓN 2: BUSCAR REGISTROS ===== -->
+        <div class="section">
+            <div class="section-title">
+                <span>📋</span> Buscar registros
+                <span style="font-size:10px;color:#f87171;font-weight:400;">
+                    🔍 Detecta si la misma IP usa diferentes dispositivos (multicuentas)
+                </span>
+            </div>
+
+            <div class="form-group" style="margin-bottom:12px;">
+                <label>RID</label>
+                <input type="text" id="searchRid" placeholder="Introduce un RID de 5 caracteres" value="" style="max-width:200px;flex:0 0 200px;text-transform:uppercase;font-family:monospace;font-weight:700;letter-spacing:1px;" />
+                <button class="btn btn-primary" onclick="cargarRegistros()">Cargar</button>
+                <button class="btn btn-secondary" onclick="cargarUltimoRID()">🔄 Último RID</button>
+                <button class="btn btn-danger" onclick="analizarMulticuentas()">🔍 Analizar</button>
+            </div>
+
+            <!-- Resumen de multicuentas -->
+            <div class="multicuentas-resumen" id="multicuentasResumen">
+                <span class="item">📱 <span class="numero" id="totalVisitasMC">0</span> Visitas totales</span>
+                <span class="item">🖥️ <span class="numero" id="dispositivosUnicosMC">0</span> Dispositivos únicos</span>
+                <span class="item">🌐 <span class="numero" id="ipsUnicasMC">0</span> IPs únicas</span>
+                <span class="item">⚠️ <span class="numero" id="multicuentasDetectadas">0</span> Posibles multicuentas</span>
+                <span class="item" style="color:#6ee7b7;">✅ <span class="numero verde" id="cuentasLimpias">0</span> Cuentas limpias</span>
+            </div>
+
+            <!-- Leyenda -->
+            <div class="leyenda">
+                <span><span class="dot verde"></span> 🟢 Limpia (1 IP = 1 dispositivo)</span>
+                <span><span class="dot rojo"></span> 🔴 Multicuenta (1 IP = múltiples dispositivos)</span>
+            </div>
+
+            <!-- ===== ESTADO DEL SERVIDOR (sin URL) ===== -->
+            <div class="status-bar" id="statusBar">
+                <span class="status-item">
+                    <span class="status-dot" id="statusDot"></span>
+                    <span id="statusText">Comprobando servidor...</span>
+                </span>
+            </div>
+
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>IP</th>
+                            <th>Fecha ▼</th>
+                            <th>País</th>
+                            <th>Región</th>
+                            <th>Ciudad</th>
+                            <th>Dispositivo</th>
+                        </tr>
+                    </thead>
+                    <tbody id="recordsBody">
+                        <tr>
+                            <td colspan="6" class="empty-state">No hay datos cargados.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="tip">
+                <span>🔍</span>
+                <span>
+                    <strong>Detección de multicuentas:</strong>
+                    Al lado de cada IP verás un indicador:
+                    <span style="color:#6ee7b7;">🟢 Limpia</span> o
+                    <span style="color:#f87171;">🔴 Multicuenta</span>
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============================================================
+        //  🔥 CONFIGURACIÓN - CAMBIA ESTO CON TU URL DE RENDER
+        // ============================================================
+        const API_URL = 'https://visor-purple.onrender.com'; // <--- CAMBIA ESTO
+
+        // ============================================================
+        //  GENERAR RID DE 5 CARACTERES
+        // ============================================================
+        function generarRID() {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+            let rid = '';
+            for (let i = 0; i < 5; i++) {
+                rid += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            return rid;
+        }
+
+        // ============================================================
+        //  DATOS DE EJEMPLO CON MULTICUENTAS
+        // ============================================================
+        const MOCK_DATA = {
+            'A1B2C': [
+                { ip: '192.168.1.1', date: '2026-06-25 14:32:18', pais: 'España', region: 'Madrid', ciudad: 'Madrid',
+                    dispositivo: 'Escritorio' },
+                { ip: '192.168.1.1', date: '2026-06-25 15:10:05', pais: 'España', region: 'Madrid', ciudad: 'Madrid',
+                    dispositivo: 'Móvil' },
+                { ip: '192.168.1.1', date: '2026-06-25 16:45:22', pais: 'España', region: 'Madrid', ciudad: 'Madrid',
+                    dispositivo: 'Tablet' },
+                { ip: '10.0.0.5', date: '2026-06-25 09:15:42', pais: 'México', region: 'CDMX', ciudad: 'Ciudad de México',
+                    dispositivo: 'Móvil' },
+                { ip: '172.16.0.10', date: '2026-06-24 22:01:03', pais: 'Argentina', region: 'Buenos Aires',
+                    ciudad: 'Buenos Aires', dispositivo: 'Escritorio' },
+            ]
+        };
+
+        let ultimoRID = '';
+        let ultimaImagen = '';
+
+        // ============================================================
+        //  COMPROBAR ESTADO DEL SERVIDOR - SIN MOSTRAR URL
+        // ============================================================
+        async function comprobarServidor() {
+            const dot = document.getElementById('statusDot');
+            const text = document.getElementById('statusText');
+            const badge = document.getElementById('statusBadge');
+
+            try {
+                const response = await fetch(`${API_URL}/api/records/demo001`);
+                if (response.ok || response.status === 404) {
+                    dot.className = 'status-dot online';
+                    text.textContent = '✅ Servidor conectado';
+                    badge.textContent = '🟢 Servidor activo';
+                    badge.style.background = 'rgba(5, 150, 105, 0.15)';
+                    badge.style.color = '#6ee7b7';
+                    badge.style.border = '1px solid rgba(5, 150, 105, 0.15)';
+                    return true;
+                } else {
+                    throw new Error('Error en el servidor');
+                }
+            } catch (error) {
+                dot.className = 'status-dot offline';
+                text.textContent = '⚠️ Sin servidor';
+                badge.textContent = '🔴 Sin servidor';
+                badge.style.background = 'rgba(239, 68, 68, 0.15)';
+                badge.style.color = '#f87171';
+                badge.style.border = '1px solid rgba(239, 68, 68, 0.15)';
+                return false;
+            }
+        }
+
+        // ============================================================
+        //  GENERAR URL CON RID AUTOMÁTICO - SIN AVISOS
+        // ============================================================
+        function generarURL() {
+            const img = document.getElementById('imgInput').value.trim();
+
+            if (!img) {
+                return;
+            }
+
+            const rid = generarRID();
+            document.getElementById('ridInput').value = rid;
+            ultimoRID = rid;
+            ultimaImagen = img;
+
+            document.getElementById('headerRid').textContent = '🔑 RID: ' + rid;
+            document.getElementById('tipRidExample').textContent = rid;
+            document.getElementById('urlRidTag').textContent = '🔑 ' + rid;
+
+            let imgCodificada;
+            try {
+                imgCodificada = btoa(img);
+            } catch (e) {
+                return;
+            }
+
+            let extension = 'jpg';
+            const urlParts = img.split('.');
+            if (urlParts.length > 1) {
+                const ext = urlParts[urlParts.length - 1].split('?')[0].toLowerCase();
+                if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) {
+                    extension = ext;
+                }
+            }
+
+            const url = `${API_URL}/i/${rid}/${imgCodificada}.${extension}`;
+            document.getElementById('urlDisplay').textContent = url;
+
+            const preview = document.getElementById('imagePreview');
+            const previewImg = document.getElementById('previewImg');
+            previewImg.src = img;
+            preview.style.display = 'block';
+            previewImg.onerror = function() {
+                preview.style.display = 'none';
+            };
+
+            document.getElementById('searchRid').value = rid;
+            cargarRegistros();
+
+            console.log(`🔑 RID: ${rid}`);
+            console.log(`📎 URL: ${url}`);
+        }
+
+        // ============================================================
+        //  COPIAR URL - SIN AVISOS
+        // ============================================================
+        function copiarURL() {
+            const url = document.getElementById('urlDisplay').textContent;
+            if (!url || url.includes('Pega una imagen')) {
+                return;
+            }
+            navigator.clipboard.writeText(url).catch(() => {
+                const ta = document.createElement('textarea');
+                ta.value = url;
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand('copy');
+                document.body.removeChild(ta);
+            });
+        }
+
+        // ============================================================
+        //  LIMPIAR
+        // ============================================================
+        function limpiar() {
+            document.getElementById('imgInput').value = '';
+            document.getElementById('ridInput').value = '---';
+            document.getElementById('urlDisplay').textContent = 'Pega una imagen y pulsa "Generar"';
+            document.getElementById('urlRidTag').textContent = '---';
+            document.getElementById('imagePreview').style.display = 'none';
+            document.getElementById('searchRid').value = '';
+            document.getElementById('headerRid').textContent = '🔑 RID: ---';
+            document.getElementById('tipRidExample').textContent = '---';
+            document.getElementById('multicuentasResumen').style.display = 'none';
+            document.getElementById('multicuentasBadge').textContent = '📱 Detección';
+            document.getElementById('multicuentasBadge').style.background = 'rgba(239, 68, 68, 0.15)';
+            document.getElementById('multicuentasBadge').style.color = '#f87171';
+        }
+
+        // ============================================================
+        //  CARGAR ÚLTIMO RID
+        // ============================================================
+        function cargarUltimoRID() {
+            if (ultimoRID) {
+                document.getElementById('searchRid').value = ultimoRID;
+                cargarRegistros();
+            }
+        }
+
+        // ============================================================
+        //  ANALIZAR MULTICUENTAS
+        // ============================================================
+        function analizarMulticuentas() {
+            const tbody = document.getElementById('recordsBody');
+            const rows = tbody.querySelectorAll('tr');
+            if (rows.length === 0 || rows[0].classList.contains('empty-state')) {
+                return;
+            }
+
+            const resumen = document.getElementById('multicuentasResumen');
+            resumen.style.display = 'flex';
+
+            // Recopilar datos de la tabla
+            const visitas = [];
+            rows.forEach(row => {
+                const cells = row.querySelectorAll('td');
+                if (cells.length >= 6) {
+                    const ipText = cells[0].textContent.trim();
+                    const dispositivo = cells[5].textContent.trim();
+                    visitas.push({ ip: ipText, dispositivo });
+                }
+            });
+
+            // Agrupar por IP
+            const ips = {};
+            visitas.forEach(v => {
+                if (!ips[v.ip]) ips[v.ip] = [];
+                ips[v.ip].push(v);
+            });
+
+            let multicuentas = 0;
+            let cuentasLimpias = 0;
+            let totalDispositivos = visitas.length;
+            let dispositivosUnicos = new Set();
+            let ipsUnicas = Object.keys(ips).length;
+
+            // Analizar cada IP
+            Object.keys(ips).forEach(ip => {
+                const devices = ips[ip];
+                const uniqueDevices = new Set(devices.map(d => d.dispositivo));
+                if (uniqueDevices.size > 1) {
+                    multicuentas++;
+                } else {
+                    cuentasLimpias++;
+                }
+                uniqueDevices.forEach(d => dispositivosUnicos.add(d));
+            });
+
+            // Actualizar resumen
+            document.getElementById('totalVisitasMC').textContent = totalDispositivos;
+            document.getElementById('dispositivosUnicosMC').textContent = dispositivosUnicos.size;
+            document.getElementById('ipsUnicasMC').textContent = ipsUnicas;
+            document.getElementById('multicuentasDetectadas').textContent = multicuentas;
+            document.getElementById('cuentasLimpias').textContent = cuentasLimpias;
+
+            // Actualizar badge del título
+            const badge = document.getElementById('multicuentasBadge');
+            if (multicuentas > 0) {
+                badge.textContent = `⚠️ ${multicuentas} multicuenta${multicuentas > 1 ? 's' : ''}`;
+                badge.style.background = 'rgba(239, 68, 68, 0.2)';
+                badge.style.color = '#f87171';
+            } else {
+                badge.textContent = '✅ Sin multicuentas';
+                badge.style.background = 'rgba(5, 150, 105, 0.15)';
+                badge.style.color = '#6ee7b7';
+            }
+
+            // Actualizar cada fila con el indicador al lado de la IP
+            rows.forEach(row => {
+                const cells = row.querySelectorAll('td');
+                if (cells.length >= 6) {
+                    const ipText = cells[0].textContent.trim();
+                    const dispositivo = cells[5].textContent.trim();
+
+                    // Verificar si esta IP tiene múltiples dispositivos
+                    let esMulticuenta = false;
+                    if (ips[ipText]) {
+                        const uniqueDevices = new Set(ips[ipText].map(d => d.dispositivo));
+                        if (uniqueDevices.size > 1) esMulticuenta = true;
+                    }
+
+                    // Reemplazar el contenido de la celda IP con el indicador
+                    const indicator = esMulticuenta ?
+                        `<span class="status-indicator multicuenta"></span><span class="ip-text">${ipText}</span>` :
+                        `<span class="status-indicator limpia"></span><span class="ip-text">${ipText}</span>`;
+
+                    cells[0].innerHTML = `<div class="ip-container">${indicator}</div>`;
+
+                    // Añadir clase a la fila
+                    if (esMulticuenta) {
+                        row.classList.add('multicuentas');
+                    } else {
+                        row.classList.remove('multicuentas');
+                    }
+                }
+            });
+        }
+
+        // ============================================================
+        //  CARGAR REGISTROS
+        // ============================================================
+        async function cargarRegistros() {
+            let rid = document.getElementById('searchRid').value.trim().toUpperCase();
+            if (!rid) {
+                rid = ultimoRID;
+                if (!rid) {
+                    rid = document.getElementById('ridInput').value.trim();
+                    if (!rid || rid === '---') {
+                        document.getElementById('recordsBody').innerHTML =
+                            `<tr><td colspan="6" class="empty-state">⚠️ Introduce un RID de 5 caracteres</td></tr>`;
+                        return;
+                    }
+                }
+                document.getElementById('searchRid').value = rid;
+            }
+
+            if (rid.length !== 5) {
+                document.getElementById('recordsBody').innerHTML =
+                    `<tr><td colspan="6" class="empty-state">⚠️ El RID debe tener exactamente 5 caracteres</td></tr>`;
+                return;
+            }
+
+            const tbody = document.getElementById('recordsBody');
+            tbody.innerHTML = `<tr><td colspan="6" class="loading">⏳ Cargando registros</td></tr>`;
+            document.getElementById('multicuentasResumen').style.display = 'none';
+
+            try {
+                const response = await fetch(`${API_URL}/api/records/${rid}`);
+
+                if (!response.ok) {
+                    if (response.status === 404) {
+                        const records = MOCK_DATA[rid] || [];
+                        if (records.length > 0) {
+                            mostrarRegistros(records, tbody);
+                            setTimeout(() => analizarMulticuentas(), 100);
+                        } else {
+                            tbody.innerHTML =
+                                `<tr><td colspan="6" class="empty-state">No se encontraron registros para: ${rid}</td></tr>`;
+                        }
+                    } else {
+                        tbody.innerHTML = `<tr><td colspan="6" class="empty-state">❌ Error al cargar los datos</td></tr>`;
+                    }
+                    return;
+                }
+
+                const data = await response.json();
+
+                if (data.records && data.records.length > 0) {
+                    mostrarRegistros(data.records, tbody);
+                    setTimeout(() => analizarMulticuentas(), 100);
+                } else {
+                    tbody.innerHTML =
+                    `<tr><td colspan="6" class="empty-state">No hay registros para: ${rid}</td></tr>`;
+                }
+
+            } catch (error) {
+                console.warn('⚠️ Usando datos de ejemplo (sin servidor)');
+                const records = MOCK_DATA[rid] || [];
+                if (records.length > 0) {
+                    mostrarRegistros(records, tbody);
+                    setTimeout(() => analizarMulticuentas(), 100);
+                } else {
+                    tbody.innerHTML =
+                        `<tr><td colspan="6" class="empty-state">No se encontraron registros para: ${rid}</td></tr>`;
+                }
+            }
+        }
+
+        // ============================================================
+        //  MOSTRAR REGISTROS
+        // ============================================================
+        function mostrarRegistros(records, tbody) {
+            if (!records || records.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="empty-state">No hay registros</td></tr>`;
+                return;
+            }
+
+            let html = '';
+            records.forEach(r => {
+                const flag = obtenerBandera(r.pais);
+                html += `
+                    <tr>
+                        <td><span class="badge badge-ip">${r.ip || 'N/A'}</span></td>
+                        <td>${r.date || 'N/A'}</td>
+                        <td><span class="badge badge-country">${flag} ${r.pais || 'Desconocido'}</span></td>
+                        <td>${r.region || 'N/A'}</td>
+                        <td><span class="badge badge-city">📍 ${r.ciudad || 'N/A'}</span></td>
+                        <td><span class="badge badge-device">${r.dispositivo || 'N/A'}</span></td>
+                    </tr>
+                `;
+            });
+            tbody.innerHTML = html;
+        }
+
+        // ============================================================
+        //  OBTENER BANDERA
+        // ============================================================
+        function obtenerBandera(pais) {
+            const mapa = {
+                'España': '🇪🇸',
+                'México': '🇲🇽',
+                'Argentina': '🇦🇷',
+                'Estados Unidos': '🇺🇸',
+                'EE.UU.': '🇺🇸',
+                'Colombia': '🇨🇴',
+                'Chile': '🇨🇱',
+                'Perú': '🇵🇪',
+                'Venezuela': '🇻🇪',
+                'Cuba': '🇨🇺',
+                'Brasil': '🇧🇷',
+                'Uruguay': '🇺🇾',
+                'Paraguay': '🇵🇾',
+                'Bolivia': '🇧🇴',
+                'Ecuador': '🇪🇨',
+                'Costa Rica': '🇨🇷',
+                'Panamá': '🇵🇦',
+                'Nicaragua': '🇳🇮',
+                'Honduras': '🇭🇳',
+                'El Salvador': '🇸🇻',
+                'Guatemala': '🇬🇹',
+                'República Dominicana': '🇩🇴',
+                'Puerto Rico': '🇵🇷'
+            };
+            return mapa[pais] || '🌍';
+        }
+
+        // ============================================================
+        //  EVENTOS AUTOMÁTICOS - SIN AVISOS
+        // ============================================================
+        document.addEventListener('DOMContentLoaded', function() {
+            const imgInput = document.getElementById('imgInput');
+
+            imgInput.addEventListener('paste', function() {
+                setTimeout(() => {
+                    if (imgInput.value.trim()) generarURL();
+                }, 100);
+            });
+
+            imgInput.addEventListener('input', function() {
+                const val = imgInput.value.trim();
+                if (val && (val.startsWith('http://') || val.startsWith('https://'))) {
+                    const preview = document.getElementById('imagePreview');
+                    const previewImg = document.getElementById('previewImg');
+                    previewImg.src = val;
+                    preview.style.display = 'block';
+                    previewImg.onerror = function() {
+                        preview.style.display = 'none';
+                    };
+                }
+            });
+
+            imgInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    generarURL();
+                }
+            });
+
+            document.getElementById('searchRid').addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    cargarRegistros();
+                }
+            });
+
+            document.getElementById('searchRid').addEventListener('input', function() {
+                this.value = this.value.toUpperCase().substring(0, 5);
+            });
+
+            // ============================================================
+            //  INICIALIZAR - TODO VACIO
+            // ============================================================
+            document.getElementById('ridInput').value = '---';
+            document.getElementById('headerRid').textContent = '🔑 RID: ---';
+            document.getElementById('tipRidExample').textContent = '---';
+            document.getElementById('urlRidTag').textContent = '---';
+            document.getElementById('imgInput').value = '';
+            ultimoRID = '';
+
+            document.getElementById('recordsBody').innerHTML =
+                `<tr><td colspan="6" class="empty-state">No hay datos cargados.</td></tr>`;
+            document.getElementById('multicuentasResumen').style.display = 'none';
+
+            comprobarServidor();
+
+            console.log('🟣 Visor - Purple Edition v2.0');
+            console.log('🔍 Detección de multicuentas activada');
+            console.log(`🌐 Servidor configurado: ${API_URL}`);
+        });
+    </script>
+
+</body>
+</html>
