@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Visor - Purple Edition v2.0</title>
+    <title>Visor - Purple Edition v2.1</title>
     <style>
         /* ============================================================
            ESTILOS GENERALES - MORADO OSCURO
@@ -375,6 +375,7 @@
             display: flex;
             align-items: center;
             gap: 6px;
+            flex-wrap: wrap;
         }
 
         .status-indicator {
@@ -404,6 +405,114 @@
         .ip-text {
             font-family: monospace;
             color: #b894f0;
+        }
+
+        .ip-devices-count {
+            font-size: 9px;
+            color: #7c6a9e;
+            margin-left: 4px;
+        }
+
+        .ip-devices-count.multicuenta {
+            color: #f87171;
+        }
+
+        .ip-devices-count.limpia {
+            color: #6ee7b7;
+        }
+
+        /* ============================================================
+           ENLACE DE COORDENADAS A GOOGLE MAPS
+           ============================================================ */
+        .coords-link {
+            color: #93bbfc;
+            text-decoration: none;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: monospace;
+            font-size: 11px;
+        }
+
+        .coords-link:hover {
+            color: #d4b8ff;
+            text-decoration: underline;
+            text-shadow: 0 0 10px rgba(168, 85, 247, 0.3);
+        }
+
+        .coords-link .map-icon {
+            font-size: 14px;
+            margin-right: 3px;
+        }
+
+        /* ============================================================
+           TIPO DE DISPOSITIVO - ICONOS
+           ============================================================ */
+        .device-type {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-weight: 600;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+        }
+
+        .device-type.pc {
+            background: rgba(168, 85, 247, 0.12);
+            color: #c084fc;
+        }
+
+        .device-type.android {
+            background: rgba(5, 150, 105, 0.12);
+            color: #6ee7b7;
+        }
+
+        .device-type.iphone {
+            background: rgba(59, 130, 246, 0.12);
+            color: #93bbfc;
+        }
+
+        .device-type.tablet {
+            background: rgba(251, 191, 36, 0.12);
+            color: #fcd34d;
+        }
+
+        .device-type.bot {
+            background: rgba(239, 68, 68, 0.12);
+            color: #f87171;
+        }
+
+        .device-type.desconocido {
+            background: rgba(255, 255, 255, 0.05);
+            color: #7c6a9e;
+        }
+
+        .device-detail {
+            font-size: 10px;
+            color: #7c6a9e;
+            margin-left: 4px;
+        }
+
+        .device-info-cell {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .device-info-cell .device-type {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-weight: 600;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+        }
+
+        .device-info-cell .device-detail {
+            font-size: 9px;
+            color: #7c6a9e;
+            word-break: break-all;
         }
 
         .tip {
@@ -595,10 +704,36 @@
             border: 1px solid rgba(251, 191, 36, 0.15);
         }
 
+        .toast-message {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #2d1b4e;
+            color: #d4b8ff;
+            padding: 12px 24px;
+            border-radius: 12px;
+            border: 1px solid rgba(180, 100, 255, 0.2);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+            font-size: 14px;
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+            max-width: 90%;
+            text-align: center;
+        }
+
+        .toast-message.show {
+            opacity: 1;
+        }
+
         @media (max-width: 768px) {
             .container { padding: 20px; }
             .header h1 { font-size: 20px; }
             th, td { padding: 6px 8px; font-size: 10px; }
+            .ip-container { flex-wrap: wrap; }
+            .toast-message { font-size: 12px; padding: 10px 16px; bottom: 20px; }
         }
 
         @media (max-width: 480px) {
@@ -608,6 +743,8 @@
             .form-group .rid-display { flex: 0 0 70px; max-width: 70px; font-size: 14px; }
             th, td { padding: 4px 6px; font-size: 9px; }
             .badge { font-size: 8px; padding: 1px 6px; }
+            .ip-container { flex-wrap: wrap; }
+            .ip-devices-count { font-size: 8px; }
         }
 
         ::-webkit-scrollbar {
@@ -632,7 +769,7 @@
     <div class="container">
         <!-- ===== ENCABEZADO ===== -->
         <div class="header">
-            <h1>🔮 <span style="color:#a855f7;">Visor</span> <span class="version-badge">v2.0</span></h1>
+            <h1>🔮 <span style="color:#a855f7;">Visor</span> <span class="version-badge">v2.1</span></h1>
             <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
                 <span class="badge-rid" id="headerRid">🔑 RID: ---</span>
                 <span class="badge">🟣 Purple</span>
@@ -720,6 +857,7 @@
             <div class="leyenda">
                 <span><span class="dot verde"></span> 🟢 Limpia (1 IP = 1 dispositivo)</span>
                 <span><span class="dot rojo"></span> 🔴 Multicuenta (1 IP = múltiples dispositivos)</span>
+                <span>📍 <span style="color:#93bbfc;">Coordenadas clickeables</span> → Google Maps</span>
             </div>
 
             <!-- ===== ESTADO DEL SERVIDOR (sin URL) ===== -->
@@ -739,12 +877,13 @@
                             <th>País</th>
                             <th>Región</th>
                             <th>Ciudad</th>
-                            <th>Dispositivo</th>
+                            <th>📍 Coordenadas</th>
+                            <th>📱 Dispositivo</th>
                         </tr>
                     </thead>
                     <tbody id="recordsBody">
                         <tr>
-                            <td colspan="6" class="empty-state">No hay datos cargados.</td>
+                            <td colspan="7" class="empty-state">No hay datos cargados.</td>
                         </tr>
                     </tbody>
                 </table>
@@ -758,15 +897,34 @@
                     <span style="color:#6ee7b7;">🟢 Limpia</span> o
                     <span style="color:#f87171;">🔴 Multicuenta</span>
                 </span>
+                <span style="margin-left:auto;font-size:11px;color:#7c6a9e;">
+                    📍 Haz clic en las coordenadas para ver en Google Maps
+                </span>
             </div>
         </div>
     </div>
+
+    <!-- ===== TOAST PARA MENSAJES SILENCIOSOS ===== -->
+    <div class="toast-message" id="toastMessage"></div>
 
     <script>
         // ============================================================
         //  🔥 CONFIGURACIÓN - CAMBIA ESTO CON TU URL DE RENDER
         // ============================================================
         const API_URL = 'https://visor-purple-v2.onrender.com'; // <--- CAMBIA ESTO
+
+        // ============================================================
+        //  TOAST - MENSAJES SILENCIOSOS (sin alertas)
+        // ============================================================
+        function showToast(message, duration = 2500) {
+            const toast = document.getElementById('toastMessage');
+            toast.textContent = message;
+            toast.classList.add('show');
+            clearTimeout(toast._timeout);
+            toast._timeout = setTimeout(() => {
+                toast.classList.remove('show');
+            }, duration);
+        }
 
         // ============================================================
         //  GENERAR RID DE 5 CARACTERES
@@ -786,15 +944,15 @@
         const MOCK_DATA = {
             'A1B2C': [
                 { ip: '192.168.1.1', date: '2026-06-25 14:32:18', pais: 'España', region: 'Madrid', ciudad: 'Madrid',
-                    dispositivo: 'Escritorio' },
+                    coords: '40.4167, -3.7033', dispositivo: 'PC - Chrome 120 / Windows' },
                 { ip: '192.168.1.1', date: '2026-06-25 15:10:05', pais: 'España', region: 'Madrid', ciudad: 'Madrid',
-                    dispositivo: 'Móvil' },
+                    coords: '40.4167, -3.7033', dispositivo: 'Android - Chrome 120 / Android 13' },
                 { ip: '192.168.1.1', date: '2026-06-25 16:45:22', pais: 'España', region: 'Madrid', ciudad: 'Madrid',
-                    dispositivo: 'Tablet' },
+                    coords: '40.4167, -3.7033', dispositivo: 'Tablet - Safari 17 / iPadOS' },
                 { ip: '10.0.0.5', date: '2026-06-25 09:15:42', pais: 'México', region: 'CDMX', ciudad: 'Ciudad de México',
-                    dispositivo: 'Móvil' },
+                    coords: '19.4326, -99.1332', dispositivo: 'Android - Firefox 115 / Android 13' },
                 { ip: '172.16.0.10', date: '2026-06-24 22:01:03', pais: 'Argentina', region: 'Buenos Aires',
-                    ciudad: 'Buenos Aires', dispositivo: 'Escritorio' },
+                    ciudad: 'Buenos Aires', coords: '-34.6037, -58.3816', dispositivo: 'PC - Edge 120 / Windows' },
             ]
         };
 
@@ -834,12 +992,60 @@
         }
 
         // ============================================================
+        //  DETECTAR TIPO DE DISPOSITIVO
+        // ============================================================
+        function detectarTipoDispositivo(deviceString) {
+            if (!deviceString) return { tipo: 'desconocido', icono: '❓', label: 'Desconocido' };
+
+            const d = deviceString.toLowerCase();
+
+            if (d.includes('bot') || d.includes('crawler') || d.includes('spider')) {
+                return { tipo: 'bot', icono: '🤖', label: 'Bot' };
+            }
+            if (d.includes('iphone') || d.includes('ios')) {
+                return { tipo: 'iphone', icono: '📱', label: 'iPhone' };
+            }
+            if (d.includes('ipad')) {
+                return { tipo: 'tablet', icono: '📱', label: 'iPad' };
+            }
+            if (d.includes('android') && (d.includes('mobile') || d.includes('mobi'))) {
+                return { tipo: 'android', icono: '📱', label: 'Android' };
+            }
+            if (d.includes('android') && (d.includes('tablet') || d.includes('pad'))) {
+                return { tipo: 'tablet', icono: '📱', label: 'Tablet' };
+            }
+            if (d.includes('windows') || d.includes('mac os') || d.includes('linux') || d.includes('pc')) {
+                return { tipo: 'pc', icono: '💻', label: 'PC' };
+            }
+            if (d.includes('tablet') || d.includes('ipad')) {
+                return { tipo: 'tablet', icono: '📱', label: 'Tablet' };
+            }
+            if (d.includes('mobile') || d.includes('mobi')) {
+                return { tipo: 'android', icono: '📱', label: 'Móvil' };
+            }
+
+            return { tipo: 'desconocido', icono: '❓', label: 'Desconocido' };
+        }
+
+        // ============================================================
+        //  GENERAR ENLACE A GOOGLE MAPS
+        // ============================================================
+        function generarLinkMapa(coords) {
+            if (!coords || coords === 'N/A' || coords === '0, 0') {
+                return null;
+            }
+            const cleanCoords = coords.replace(/\s/g, '');
+            return `https://www.google.com/maps?q=${cleanCoords}`;
+        }
+
+        // ============================================================
         //  GENERAR URL CON RID AUTOMÁTICO - SIN AVISOS
         // ============================================================
         function generarURL() {
             const img = document.getElementById('imgInput').value.trim();
 
             if (!img) {
+                showToast('⚠️ Pega una URL de imagen o GIF', 2000);
                 return;
             }
 
@@ -856,6 +1062,7 @@
             try {
                 imgCodificada = btoa(img);
             } catch (e) {
+                showToast('⚠️ Error al codificar la imagen', 2000);
                 return;
             }
 
@@ -882,6 +1089,7 @@
             document.getElementById('searchRid').value = rid;
             cargarRegistros();
 
+            showToast('✅ Enlace generado correctamente', 2000);
             console.log(`🔑 RID: ${rid}`);
             console.log(`📎 URL: ${url}`);
         }
@@ -892,15 +1100,19 @@
         function copiarURL() {
             const url = document.getElementById('urlDisplay').textContent;
             if (!url || url.includes('Pega una imagen')) {
+                showToast('⚠️ Genera una URL primero', 2000);
                 return;
             }
-            navigator.clipboard.writeText(url).catch(() => {
+            navigator.clipboard.writeText(url).then(() => {
+                showToast('✅ Enlace copiado al portapapeles', 2000);
+            }).catch(() => {
                 const ta = document.createElement('textarea');
                 ta.value = url;
                 document.body.appendChild(ta);
                 ta.select();
                 document.execCommand('copy');
                 document.body.removeChild(ta);
+                showToast('✅ Enlace copiado al portapapeles', 2000);
             });
         }
 
@@ -920,6 +1132,7 @@
             document.getElementById('multicuentasBadge').textContent = '📱 Detección';
             document.getElementById('multicuentasBadge').style.background = 'rgba(239, 68, 68, 0.15)';
             document.getElementById('multicuentasBadge').style.color = '#f87171';
+            showToast('🧹 Todo limpiado', 1500);
         }
 
         // ============================================================
@@ -929,16 +1142,19 @@
             if (ultimoRID) {
                 document.getElementById('searchRid').value = ultimoRID;
                 cargarRegistros();
+            } else {
+                showToast('⚠️ Genera una URL primero', 2000);
             }
         }
 
         // ============================================================
-        //  ANALIZAR MULTICUENTAS
+        //  ANALIZAR MULTICUENTAS - MEJORADO (sin alertas)
         // ============================================================
         function analizarMulticuentas() {
             const tbody = document.getElementById('recordsBody');
             const rows = tbody.querySelectorAll('tr');
             if (rows.length === 0 || rows[0].classList.contains('empty-state')) {
+                showToast('⚠️ No hay datos para analizar', 2500);
                 return;
             }
 
@@ -949,49 +1165,50 @@
             const visitas = [];
             rows.forEach(row => {
                 const cells = row.querySelectorAll('td');
-                if (cells.length >= 6) {
+                if (cells.length >= 7) {
                     const ipText = cells[0].textContent.trim();
-                    const dispositivo = cells[5].textContent.trim();
+                    const dispositivo = cells[6].textContent.trim();
                     visitas.push({ ip: ipText, dispositivo });
                 }
             });
 
-            // Agrupar por IP
+            // Agrupar por IP y contar dispositivos únicos
             const ips = {};
             visitas.forEach(v => {
                 if (!ips[v.ip]) ips[v.ip] = [];
-                ips[v.ip].push(v);
+                ips[v.ip].push(v.dispositivo);
             });
 
-            let multicuentas = 0;
-            let cuentasLimpias = 0;
-            let totalDispositivos = visitas.length;
-            let dispositivosUnicos = new Set();
+            // Calcular estadísticas
+            let totalVisitas = visitas.length;
             let ipsUnicas = Object.keys(ips).length;
+            let totalDispositivos = 0;
+            let ipsConMultiples = 0;
+            let dispositivosPorIP = {};
 
-            // Analizar cada IP
             Object.keys(ips).forEach(ip => {
                 const devices = ips[ip];
-                const uniqueDevices = new Set(devices.map(d => d.dispositivo));
-                if (uniqueDevices.size > 1) {
-                    multicuentas++;
-                } else {
-                    cuentasLimpias++;
-                }
-                uniqueDevices.forEach(d => dispositivosUnicos.add(d));
+                const uniqueDevices = new Set(devices);
+                const count = uniqueDevices.size;
+                dispositivosPorIP[ip] = {
+                    count: count,
+                    devices: Array.from(uniqueDevices)
+                };
+                totalDispositivos += count;
+                if (count > 1) ipsConMultiples++;
             });
 
-            // Actualizar resumen
-            document.getElementById('totalVisitasMC').textContent = totalDispositivos;
-            document.getElementById('dispositivosUnicosMC').textContent = dispositivosUnicos.size;
+            // Actualizar resumen con información detallada
+            document.getElementById('totalVisitasMC').textContent = totalVisitas;
+            document.getElementById('dispositivosUnicosMC').textContent = totalDispositivos;
             document.getElementById('ipsUnicasMC').textContent = ipsUnicas;
-            document.getElementById('multicuentasDetectadas').textContent = multicuentas;
-            document.getElementById('cuentasLimpias').textContent = cuentasLimpias;
+            document.getElementById('multicuentasDetectadas').textContent = ipsConMultiples;
+            document.getElementById('cuentasLimpias').textContent = ipsUnicas - ipsConMultiples;
 
             // Actualizar badge del título
             const badge = document.getElementById('multicuentasBadge');
-            if (multicuentas > 0) {
-                badge.textContent = `⚠️ ${multicuentas} multicuenta${multicuentas > 1 ? 's' : ''}`;
+            if (ipsConMultiples > 0) {
+                badge.textContent = `⚠️ ${ipsConMultiples} IP${ipsConMultiples > 1 ? 's' : ''} con múltiples dispositivos`;
                 badge.style.background = 'rgba(239, 68, 68, 0.2)';
                 badge.style.color = '#f87171';
             } else {
@@ -1000,28 +1217,51 @@
                 badge.style.color = '#6ee7b7';
             }
 
-            // Actualizar cada fila con el indicador al lado de la IP
+            // Actualizar cada fila con el indicador
             rows.forEach(row => {
                 const cells = row.querySelectorAll('td');
-                if (cells.length >= 6) {
+                if (cells.length >= 7) {
                     const ipText = cells[0].textContent.trim();
-                    const dispositivo = cells[5].textContent.trim();
+                    const dispositivo = cells[6].textContent.trim();
 
-                    // Verificar si esta IP tiene múltiples dispositivos
                     let esMulticuenta = false;
-                    if (ips[ipText]) {
-                        const uniqueDevices = new Set(ips[ipText].map(d => d.dispositivo));
-                        if (uniqueDevices.size > 1) esMulticuenta = true;
+                    let dispositivosLista = [];
+                    let countDispositivos = 0;
+                    if (dispositivosPorIP[ipText]) {
+                        const info = dispositivosPorIP[ipText];
+                        countDispositivos = info.count;
+                        if (info.count > 1) {
+                            esMulticuenta = true;
+                            dispositivosLista = info.devices;
+                        }
                     }
 
-                    // Reemplazar el contenido de la celda IP con el indicador
-                    const indicator = esMulticuenta ?
-                        `<span class="status-indicator multicuenta"></span><span class="ip-text">${ipText}</span>` :
-                        `<span class="status-indicator limpia"></span><span class="ip-text">${ipText}</span>`;
+                    let indicator = '';
+                    if (esMulticuenta) {
+                        const deviceIcons = dispositivosLista.map(d => {
+                            const tipo = detectarTipoDispositivo(d);
+                            return tipo.icono;
+                        }).join(' ');
+                        indicator = `
+                            <span class="status-indicator multicuenta"></span>
+                            <span class="ip-text">${ipText}</span>
+                            <span class="ip-devices-count multicuenta">
+                                (${countDispositivos} disp: ${deviceIcons})
+                            </span>
+                        `;
+                    } else {
+                        const tipo = detectarTipoDispositivo(dispositivo);
+                        indicator = `
+                            <span class="status-indicator limpia"></span>
+                            <span class="ip-text">${ipText}</span>
+                            <span class="ip-devices-count limpia">
+                                (1 disp: ${tipo.icono})
+                            </span>
+                        `;
+                    }
 
                     cells[0].innerHTML = `<div class="ip-container">${indicator}</div>`;
 
-                    // Añadir clase a la fila
                     if (esMulticuenta) {
                         row.classList.add('multicuentas');
                     } else {
@@ -1029,6 +1269,15 @@
                     }
                 }
             });
+
+            // Mostrar mensaje silencioso
+            let mensaje = `📊 Análisis completado: ${totalVisitas} visitas, ${totalDispositivos} dispositivos, ${ipsUnicas} IPs`;
+            if (ipsConMultiples > 0) {
+                mensaje += `, ⚠️ ${ipsConMultiples} IPs con múltiples dispositivos`;
+            } else {
+                mensaje += ', ✅ Sin multicuentas';
+            }
+            showToast(mensaje, 3500);
         }
 
         // ============================================================
@@ -1042,7 +1291,8 @@
                     rid = document.getElementById('ridInput').value.trim();
                     if (!rid || rid === '---') {
                         document.getElementById('recordsBody').innerHTML =
-                            `<tr><td colspan="6" class="empty-state">⚠️ Introduce un RID de 5 caracteres</td></tr>`;
+                            `<tr><td colspan="7" class="empty-state">⚠️ Introduce un RID de 5 caracteres</td></tr>`;
+                        showToast('⚠️ Introduce un RID de 5 caracteres', 2000);
                         return;
                     }
                 }
@@ -1051,12 +1301,13 @@
 
             if (rid.length !== 5) {
                 document.getElementById('recordsBody').innerHTML =
-                    `<tr><td colspan="6" class="empty-state">⚠️ El RID debe tener exactamente 5 caracteres</td></tr>`;
+                    `<tr><td colspan="7" class="empty-state">⚠️ El RID debe tener exactamente 5 caracteres</td></tr>`;
+                showToast('⚠️ El RID debe tener exactamente 5 caracteres', 2000);
                 return;
             }
 
             const tbody = document.getElementById('recordsBody');
-            tbody.innerHTML = `<tr><td colspan="6" class="loading">⏳ Cargando registros</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="7" class="loading">⏳ Cargando registros</td></tr>`;
             document.getElementById('multicuentasResumen').style.display = 'none';
 
             try {
@@ -1068,12 +1319,15 @@
                         if (records.length > 0) {
                             mostrarRegistros(records, tbody);
                             setTimeout(() => analizarMulticuentas(), 100);
+                            showToast(`📊 ${records.length} registros encontrados para: ${rid}`, 2500);
                         } else {
                             tbody.innerHTML =
-                                `<tr><td colspan="6" class="empty-state">No se encontraron registros para: ${rid}</td></tr>`;
+                                `<tr><td colspan="7" class="empty-state">No se encontraron registros para: ${rid}</td></tr>`;
+                            showToast(`📭 No hay registros para: ${rid}`, 2500);
                         }
                     } else {
-                        tbody.innerHTML = `<tr><td colspan="6" class="empty-state">❌ Error al cargar los datos</td></tr>`;
+                        tbody.innerHTML = `<tr><td colspan="7" class="empty-state">❌ Error al cargar los datos</td></tr>`;
+                        showToast('❌ Error al cargar los datos', 2000);
                     }
                     return;
                 }
@@ -1083,9 +1337,11 @@
                 if (data.records && data.records.length > 0) {
                     mostrarRegistros(data.records, tbody);
                     setTimeout(() => analizarMulticuentas(), 100);
+                    showToast(`📊 ${data.records.length} registros encontrados para: ${rid}`, 2500);
                 } else {
                     tbody.innerHTML =
-                    `<tr><td colspan="6" class="empty-state">No hay registros para: ${rid}</td></tr>`;
+                    `<tr><td colspan="7" class="empty-state">No hay registros para: ${rid}</td></tr>`;
+                    showToast(`📭 No hay registros para: ${rid}`, 2500);
                 }
 
             } catch (error) {
@@ -1094,25 +1350,54 @@
                 if (records.length > 0) {
                     mostrarRegistros(records, tbody);
                     setTimeout(() => analizarMulticuentas(), 100);
+                    showToast(`📊 ${records.length} registros de ejemplo para: ${rid}`, 2500);
                 } else {
                     tbody.innerHTML =
-                        `<tr><td colspan="6" class="empty-state">No se encontraron registros para: ${rid}</td></tr>`;
+                        `<tr><td colspan="7" class="empty-state">No se encontraron registros para: ${rid}</td></tr>`;
+                    showToast(`📭 No hay registros para: ${rid}`, 2500);
                 }
             }
         }
 
         // ============================================================
-        //  MOSTRAR REGISTROS
+        //  MOSTRAR REGISTROS CON COORDENADAS CLICKEABLES Y TIPO DE DISPOSITIVO
         // ============================================================
         function mostrarRegistros(records, tbody) {
             if (!records || records.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" class="empty-state">No hay registros</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="7" class="empty-state">No hay registros</td></tr>`;
                 return;
             }
 
             let html = '';
             records.forEach(r => {
                 const flag = obtenerBandera(r.pais);
+
+                // === COORDENADAS CLICKEABLES ===
+                let coordsHtml = r.coords || 'N/A';
+                const mapLink = generarLinkMapa(r.coords);
+                if (mapLink) {
+                    coordsHtml = `<a href="${mapLink}" target="_blank" class="coords-link" title="Abrir en Google Maps">
+                                    <span class="map-icon">📍</span> ${r.coords}
+                                 </a>`;
+                } else {
+                    coordsHtml = `<span style="color:#6a5a8a;">${r.coords || 'N/A'}</span>`;
+                }
+
+                // === TIPO DE DISPOSITIVO ===
+                const deviceInfo = detectarTipoDispositivo(r.dispositivo);
+                const deviceClass = deviceInfo.tipo;
+                const deviceIcon = deviceInfo.icono;
+                const deviceLabel = deviceInfo.label;
+
+                let deviceDetail = r.dispositivo || 'Desconocido';
+                if (deviceDetail.startsWith(deviceLabel)) {
+                    deviceDetail = deviceDetail.substring(deviceLabel.length).trim();
+                    deviceDetail = deviceDetail.replace(/^[-:]\s*/, '');
+                }
+                if (!deviceDetail || deviceDetail === '') {
+                    deviceDetail = 'Detalles no disponibles';
+                }
+
                 html += `
                     <tr>
                         <td><span class="badge badge-ip">${r.ip || 'N/A'}</span></td>
@@ -1120,7 +1405,15 @@
                         <td><span class="badge badge-country">${flag} ${r.pais || 'Desconocido'}</span></td>
                         <td>${r.region || 'N/A'}</td>
                         <td><span class="badge badge-city">📍 ${r.ciudad || 'N/A'}</span></td>
-                        <td><span class="badge badge-device">${r.dispositivo || 'N/A'}</span></td>
+                        <td>${coordsHtml}</td>
+                        <td>
+                            <div class="device-info-cell">
+                                <span class="device-type ${deviceClass}">
+                                    ${deviceIcon} ${deviceLabel}
+                                </span>
+                                <span class="device-detail">${deviceDetail}</span>
+                            </div>
+                        </td>
                     </tr>
                 `;
             });
@@ -1213,13 +1506,14 @@
             ultimoRID = '';
 
             document.getElementById('recordsBody').innerHTML =
-                `<tr><td colspan="6" class="empty-state">No hay datos cargados.</td></tr>`;
+                `<tr><td colspan="7" class="empty-state">No hay datos cargados.</td></tr>`;
             document.getElementById('multicuentasResumen').style.display = 'none';
 
             comprobarServidor();
 
-            console.log('🟣 Visor - Purple Edition v2.0');
-            console.log('🔍 Detección de multicuentas activada');
+            console.log('🟣 Visor - Purple Edition v2.1 (sin ventanas emergentes)');
+            console.log('📍 Coordenadas clickeables → Google Maps');
+            console.log('📱 Detección de tipo de dispositivo (PC, Android, iPhone, Tablet, Bot)');
             console.log(`🌐 Servidor configurado: ${API_URL}`);
         });
     </script>
