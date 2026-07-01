@@ -1,13 +1,14 @@
 {
-  "name": "visor-purple-v2",
-  "version": "2.0.0",
-  "description": "Visor de imágenes con detección de multicuentas",
+  "name": "visor-purple-v3",
+  "version": "3.0.0",
+  "description": "Visor de imágenes con Supabase",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
     "express": "^4.18.2",
-    "cors": "^2.8.5"
+    "cors": "^2.8.5",
+    "@supabase/supabase-js": "^2.39.0"
   }
 }
