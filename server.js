@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
+const { createClient } = require('@supabase/supabase-js');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -9,93 +10,16 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static('.'));
 
-const DB_FILE = 'database.json';
-const ALIAS_FILE = 'aliases.json';
-const SECURITY_FILE = 'security.json';
+// ============================================================
+//  🔥 CONFIGURACIÓN DE SUPABASE (TUS DATOS)
+// ============================================================
+const SUPABASE_URL = 'https://cjfwowcbuuozeefmdqln.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNqZndvd2NidXVvemVlZm1kcWxuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI4OTcxNzMsImV4cCI6MjA5ODQ3MzE3M30.zWNTmg6rZCFpjwrY99RvzgGmtAvVZAM9_5X_ss4OszA';
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ============================================================
-//  📁 FUNCIÓN PARA ASEGURAR QUE LA BASE DE DATOS EXISTE
+//  OBTENER IP REAL
 // ============================================================
-function asegurarDB() {
-    try {
-        // Asegurar database.json
-        if (!fs.existsSync(DB_FILE)) {
-            fs.writeFileSync(DB_FILE, JSON.stringify({}));
-            console.log('📁 Archivo database.json creado correctamente');
-        }
-        
-        // Asegurar aliases.json
-        if (!fs.existsSync(ALIAS_FILE)) {
-            fs.writeFileSync(ALIAS_FILE, JSON.stringify({}));
-            console.log('📁 Archivo aliases.json creado correctamente');
-        }
-        
-        // Asegurar security.json
-        if (!fs.existsSync(SECURITY_FILE)) {
-            fs.writeFileSync(SECURITY_FILE, JSON.stringify({}));
-            console.log('📁 Archivo security.json creado correctamente');
-        }
-    } catch (error) {
-        console.error('❌ Error al crear archivos de base de datos:', error);
-    }
-}
-
-// ============ LEER/GUARDAR DATOS ============
-function leerDB() {
-    try {
-        if (!fs.existsSync(DB_FILE)) {
-            fs.writeFileSync(DB_FILE, JSON.stringify({}));
-            return {};
-        }
-        return JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
-    } catch { return {}; }
-}
-
-function guardarDB(data) {
-    try {
-        fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2));
-    } catch (error) {
-        console.error('❌ Error guardando database.json:', error);
-    }
-}
-
-function leerAliases() {
-    try {
-        if (!fs.existsSync(ALIAS_FILE)) {
-            fs.writeFileSync(ALIAS_FILE, JSON.stringify({}));
-            return {};
-        }
-        return JSON.parse(fs.readFileSync(ALIAS_FILE, 'utf8'));
-    } catch { return {}; }
-}
-
-function guardarAliases(data) {
-    try {
-        fs.writeFileSync(ALIAS_FILE, JSON.stringify(data, null, 2));
-    } catch (error) {
-        console.error('❌ Error guardando aliases.json:', error);
-    }
-}
-
-function leerSeguridad() {
-    try {
-        if (!fs.existsSync(SECURITY_FILE)) {
-            fs.writeFileSync(SECURITY_FILE, JSON.stringify({}));
-            return {};
-        }
-        return JSON.parse(fs.readFileSync(SECURITY_FILE, 'utf8'));
-    } catch { return {}; }
-}
-
-function guardarSeguridad(data) {
-    try {
-        fs.writeFileSync(SECURITY_FILE, JSON.stringify(data, null, 2));
-    } catch (error) {
-        console.error('❌ Error guardando security.json:', error);
-    }
-}
-
-// ============ OBTENER IP REAL ============
 function getClientIP(req) {
     return req.headers['x-forwarded-for']?.split(',')[0] ||
         req.headers['cf-connecting-ip'] ||
@@ -103,7 +27,9 @@ function getClientIP(req) {
         '0.0.0.0';
 }
 
-// ============ GEOLOCALIZACIÓN ============
+// ============================================================
+//  GEOLOCALIZACIÓN
+// ============================================================
 async function getGeoLocation(ip) {
     try {
         const response = await fetch(`http://ip-api.com/json/${ip}?fields=status,country,countryCode,regionName,city,lat,lon,isp`);
@@ -144,92 +70,7 @@ function generarContrasena() {
 }
 
 // ============================================================
-//  🔐 ENDPOINT: CREAR ENLACE CON CONTRASEÑA
-// ============================================================
-app.post('/api/secure', (req, res) => {
-    const { rid, contrasena, expiracion } = req.body;
-
-    if (!rid) {
-        return res.status(400).json({ error: 'Falta el RID' });
-    }
-
-    // Verificar que el RID existe
-    const db = leerDB();
-    if (!db[rid]) {
-        return res.status(404).json({ error: `El RID ${rid} no existe o no tiene registros` });
-    }
-
-    const seguridad = leerSeguridad();
-    const pass = contrasena || generarContrasena();
-    const expira = expiracion || 7;
-
-    const fechaExpiracion = new Date();
-    fechaExpiracion.setDate(fechaExpiracion.getDate() + expira);
-
-    seguridad[rid] = {
-        contrasena: pass,
-        creado: new Date().toISOString(),
-        expiracion: fechaExpiracion.toISOString(),
-        intentos: 0,
-        maxIntentos: 5
-    };
-
-    guardarSeguridad(seguridad);
-
-    res.json({
-        mensaje: '✅ Enlace protegido con contraseña',
-        rid: rid,
-        contrasena: pass,
-        expiracion: fechaExpiracion.toISOString(),
-        dias: expira
-    });
-});
-
-// ============================================================
-//  🔐 VERIFICAR CONTRASEÑA
-// ============================================================
-app.post('/api/verify', (req, res) => {
-    const { rid, contrasena } = req.body;
-
-    if (!rid || !contrasena) {
-        return res.status(400).json({ error: 'Faltan datos' });
-    }
-
-    const seguridad = leerSeguridad();
-    const config = seguridad[rid];
-
-    if (!config) {
-        return res.status(404).json({ error: 'RID no encontrado o no protegido' });
-    }
-
-    if (new Date(config.expiracion) < new Date()) {
-        return res.status(403).json({ error: '❌ El enlace ha expirado' });
-    }
-
-    if (config.intentos >= config.maxIntentos) {
-        return res.status(403).json({ error: '❌ Demasiados intentos fallidos' });
-    }
-
-    if (config.contrasena !== contrasena) {
-        config.intentos++;
-        guardarSeguridad(seguridad);
-        return res.status(401).json({
-            error: '❌ Contraseña incorrecta',
-            intentos_restantes: config.maxIntentos - config.intentos
-        });
-    }
-
-    config.intentos = 0;
-    guardarSeguridad(seguridad);
-
-    res.json({
-        mensaje: '✅ Contraseña correcta',
-        rid: rid
-    });
-});
-
-// ============================================================
-//  🚫 BLOQUEAR BOTS Y RASTREADORES
+//  🚫 BLOQUEAR BOTS
 // ============================================================
 function esBot(userAgent) {
     if (!userAgent) return false;
@@ -243,24 +84,26 @@ function esBot(userAgent) {
 }
 
 // ============================================================
-//  🔥 ENDPOINT PRINCIPAL (CON SEGURIDAD)
+//  🔥 ENDPOINT PRINCIPAL
 // ============================================================
 app.get('/i/:rid/:nombreImagen', async (req, res) => {
     const { rid, nombreImagen } = req.params;
     const { device, pass } = req.query;
 
-    // 🚫 BLOQUEAR BOTS
     const userAgent = req.headers['user-agent'] || '';
     if (esBot(userAgent)) {
         return res.status(404).send('Not Found');
     }
 
-    // 🔒 VERIFICAR SEGURIDAD DEL RID
-    const seguridad = leerSeguridad();
-    const config = seguridad[rid];
+    // 🔒 VERIFICAR SEGURIDAD
+    const { data: seguridad, error: secError } = await supabase
+        .from('seguridad')
+        .select('*')
+        .eq('rid', rid)
+        .single();
 
-    if (config) {
-        if (new Date(config.expiracion) < new Date()) {
+    if (seguridad) {
+        if (new Date(seguridad.expiracion) < new Date()) {
             return res.status(403).send(`
                 <html>
                     <body style="background:#1a0a2e;display:flex;justify-content:center;align-items:center;height:100vh;color:#f87171;font-family:Arial;text-align:center;">
@@ -344,8 +187,13 @@ app.get('/i/:rid/:nombreImagen', async (req, res) => {
             `);
         }
 
-        const configSeg = seguridad[rid];
-        if (configSeg.contrasena !== pass) {
+        const { data: verifyData } = await supabase
+            .from('seguridad')
+            .select('*')
+            .eq('rid', rid)
+            .single();
+
+        if (verifyData.contrasena !== pass) {
             return res.status(403).send(`
                 <html>
                     <body style="background:#1a0a2e;display:flex;justify-content:center;align-items:center;height:100vh;color:#f87171;font-family:Arial;text-align:center;">
@@ -359,9 +207,14 @@ app.get('/i/:rid/:nombreImagen', async (req, res) => {
         }
     }
 
-    // SI EL RID ES UN ALIAS, OBTENER EL ORIGINAL
-    const aliases = leerAliases();
-    const ridOriginal = aliases[rid] || rid;
+    // VERIFICAR ALIAS
+    const { data: aliasData } = await supabase
+        .from('aliases')
+        .select('rid')
+        .eq('alias', rid)
+        .single();
+
+    const ridOriginal = aliasData?.rid || rid;
 
     let imgUrl;
     try {
@@ -387,22 +240,27 @@ app.get('/i/:rid/:nombreImagen', async (req, res) => {
         const date = new Date().toISOString().replace('T', ' ').slice(0, 19);
         const geo = await getGeoLocation(ip);
 
-        const db = leerDB();
-        if (!db[ridOriginal]) db[ridOriginal] = [];
+        const { error } = await supabase
+            .from('registros')
+            .insert([
+                {
+                    rid: ridOriginal,
+                    ip: ip,
+                    fecha: date,
+                    pais: geo.pais,
+                    region: geo.region,
+                    ciudad: geo.ciudad,
+                    coordenadas: `${geo.lat}, ${geo.lon}`,
+                    dispositivo: deviceInfo.tipo || userAgent,
+                    imagen: imgUrl
+                }
+            ]);
 
-        db[ridOriginal].push({
-            ip: ip,
-            date: date,
-            pais: geo.pais,
-            region: geo.region,
-            ciudad: geo.ciudad,
-            coords: `${geo.lat}, ${geo.lon}`,
-            dispositivo: deviceInfo.tipo || userAgent,
-            imagen: imgUrl
-        });
-        guardarDB(db);
-        
-        console.log(`✅ Visita registrada para RID: ${ridOriginal} desde IP: ${ip}`);
+        if (error) {
+            console.error('❌ Error guardando en Supabase:', error);
+        } else {
+            console.log(`✅ Visita registrada para RID: ${ridOriginal} desde IP: ${ip}`);
+        }
     } catch (e) {
         console.error('❌ Error registrando visita:', e);
     }
@@ -421,9 +279,60 @@ app.get('/i/:rid/:nombreImagen', async (req, res) => {
 });
 
 // ============================================================
+//  🔐 VERIFICAR CONTRASEÑA
+// ============================================================
+app.post('/api/verify', async (req, res) => {
+    const { rid, contrasena } = req.body;
+
+    if (!rid || !contrasena) {
+        return res.status(400).json({ error: 'Faltan datos' });
+    }
+
+    const { data: config, error } = await supabase
+        .from('seguridad')
+        .select('*')
+        .eq('rid', rid)
+        .single();
+
+    if (!config) {
+        return res.status(404).json({ error: 'RID no encontrado o no protegido' });
+    }
+
+    if (new Date(config.expiracion) < new Date()) {
+        return res.status(403).json({ error: '❌ El enlace ha expirado' });
+    }
+
+    if (config.intentos >= config.max_intentos) {
+        return res.status(403).json({ error: '❌ Demasiados intentos fallidos' });
+    }
+
+    if (config.contrasena !== contrasena) {
+        await supabase
+            .from('seguridad')
+            .update({ intentos: config.intentos + 1 })
+            .eq('rid', rid);
+
+        return res.status(401).json({
+            error: '❌ Contraseña incorrecta',
+            intentos_restantes: config.max_intentos - config.intentos - 1
+        });
+    }
+
+    await supabase
+        .from('seguridad')
+        .update({ intentos: 0 })
+        .eq('rid', rid);
+
+    res.json({
+        mensaje: '✅ Contraseña correcta',
+        rid: rid
+    });
+});
+
+// ============================================================
 //  📝 CREAR/RENOMBRAR ALIAS
 // ============================================================
-app.post('/api/alias', (req, res) => {
+app.post('/api/alias', async (req, res) => {
     const { rid, alias } = req.body;
 
     console.log(`📝 Recibida petición de renombrar: rid=${rid}, alias=${alias}`);
@@ -432,18 +341,37 @@ app.post('/api/alias', (req, res) => {
         return res.status(400).json({ error: 'Faltan parámetros: rid y alias son obligatorios' });
     }
 
-    const db = leerDB();
-    if (!db[rid]) {
+    // Verificar que el RID existe (tiene registros)
+    const { data: registros, error: regError } = await supabase
+        .from('registros')
+        .select('rid')
+        .eq('rid', rid)
+        .limit(1);
+
+    if (!registros || registros.length === 0) {
         return res.status(404).json({ error: `El RID ${rid} no existe o no tiene registros` });
     }
 
-    const aliases = leerAliases();
-    if (aliases[alias] && aliases[alias] !== rid) {
-        return res.status(400).json({ error: `El alias '${alias}' ya está en uso por otro RID` });
+    // Verificar que el alias no esté ya usado
+    const { data: aliasExistente } = await supabase
+        .from('aliases')
+        .select('alias')
+        .eq('alias', alias)
+        .single();
+
+    if (aliasExistente) {
+        return res.status(400).json({ error: `El alias '${alias}' ya está en uso` });
     }
 
-    aliases[alias] = rid;
-    guardarAliases(aliases);
+    // Guardar el alias
+    const { error } = await supabase
+        .from('aliases')
+        .insert([{ alias, rid }]);
+
+    if (error) {
+        console.error('❌ Error guardando alias:', error);
+        return res.status(500).json({ error: 'Error al guardar el alias' });
+    }
 
     console.log(`✅ Alias '${alias}' creado para el RID '${rid}'`);
     res.json({
@@ -454,72 +382,89 @@ app.post('/api/alias', (req, res) => {
 });
 
 // ============================================================
-//  📋 OBTENER ALIAS DE UN RID
+//  🔒 PROTEGER ENLACE
 // ============================================================
-app.get('/api/alias/:rid', (req, res) => {
-    const { rid } = req.params;
-    const aliases = leerAliases();
+app.post('/api/secure', async (req, res) => {
+    const { rid, contrasena, expiracion } = req.body;
 
-    const aliasList = [];
-    Object.keys(aliases).forEach(key => {
-        if (aliases[key] === rid) {
-            aliasList.push(key);
-        }
-    });
-
-    res.json({
-        rid: rid,
-        aliases: aliasList
-    });
-});
-
-// ============================================================
-//  📋 OBTENER TODOS LOS ALIASES
-// ============================================================
-app.get('/api/aliases', (req, res) => {
-    const aliases = leerAliases();
-    res.json(aliases);
-});
-
-// ============================================================
-//  🗑️ ELIMINAR ALIAS
-// ============================================================
-app.delete('/api/alias/:alias', (req, res) => {
-    const { alias } = req.params;
-    const aliases = leerAliases();
-
-    if (!aliases[alias]) {
-        return res.status(404).json({ error: `El alias '${alias}' no existe` });
+    if (!rid) {
+        return res.status(400).json({ error: 'Falta el RID' });
     }
 
-    delete aliases[alias];
-    guardarAliases(aliases);
+    // Verificar que el RID existe
+    const { data: registros, error: regError } = await supabase
+        .from('registros')
+        .select('rid')
+        .eq('rid', rid)
+        .limit(1);
+
+    if (!registros || registros.length === 0) {
+        return res.status(404).json({ error: `El RID ${rid} no existe o no tiene registros` });
+    }
+
+    const pass = contrasena || generarContrasena();
+    const expira = expiracion || 7;
+
+    const fechaExpiracion = new Date();
+    fechaExpiracion.setDate(fechaExpiracion.getDate() + expira);
+
+    const { error } = await supabase
+        .from('seguridad')
+        .upsert({
+            rid: rid,
+            contrasena: pass,
+            creado: new Date().toISOString(),
+            expiracion: fechaExpiracion.toISOString(),
+            intentos: 0,
+            max_intentos: 5
+        }, { onConflict: 'rid' });
+
+    if (error) {
+        console.error('❌ Error guardando seguridad:', error);
+        return res.status(500).json({ error: 'Error al proteger el enlace' });
+    }
 
     res.json({
-        mensaje: `✅ Alias '${alias}' eliminado correctamente`
+        mensaje: '✅ Enlace protegido con contraseña',
+        rid: rid,
+        contrasena: pass,
+        expiracion: fechaExpiracion.toISOString(),
+        dias: expira
     });
 });
 
 // ============================================================
-//  OBTENER REGISTROS (con soporte para alias)
+//  OBTENER REGISTROS
 // ============================================================
-app.get('/api/records/:rid', (req, res) => {
+app.get('/api/records/:rid', async (req, res) => {
     let rid = req.params.rid;
 
     // Verificar si es un alias
-    const aliases = leerAliases();
-    if (aliases[rid]) {
-        rid = aliases[rid];
+    const { data: aliasData } = await supabase
+        .from('aliases')
+        .select('rid')
+        .eq('alias', rid)
+        .single();
+
+    if (aliasData) {
+        rid = aliasData.rid;
     }
 
-    const db = leerDB();
-    const records = db[rid] || [];
+    const { data: records, error } = await supabase
+        .from('registros')
+        .select('*')
+        .eq('rid', rid)
+        .order('fecha', { ascending: false });
 
-    if (records.length === 0) {
+    if (error) {
+        console.error('❌ Error obteniendo registros:', error);
+        return res.status(500).json({ error: 'Error al obtener los registros' });
+    }
+
+    if (!records || records.length === 0) {
         return res.status(404).json({ message: 'Sin registros' });
     }
 
-    records.sort((a, b) => new Date(b.date) - new Date(a.date));
     res.json({
         rid: rid,
         count: records.length,
@@ -528,12 +473,16 @@ app.get('/api/records/:rid', (req, res) => {
 });
 
 // ============================================================
-//  OBTENER INFO DE SEGURIDAD DE UN RID
+//  OBTENER INFO DE SEGURIDAD
 // ============================================================
-app.get('/api/security/:rid', (req, res) => {
+app.get('/api/security/:rid', async (req, res) => {
     const { rid } = req.params;
-    const seguridad = leerSeguridad();
-    const config = seguridad[rid];
+
+    const { data: config, error } = await supabase
+        .from('seguridad')
+        .select('*')
+        .eq('rid', rid)
+        .single();
 
     if (!config) {
         return res.json({ protegido: false });
@@ -549,14 +498,10 @@ app.get('/api/security/:rid', (req, res) => {
 // ============================================================
 //  🚀 INICIAR EL SERVIDOR
 // ============================================================
-// Asegurar que los archivos de base de datos existen
-asegurarDB();
-
 app.listen(PORT, () => {
     console.log(`✅ Servidor corriendo en puerto ${PORT}`);
-    console.log(`🟣 Visor - Purple Edition v2.9`);
-    console.log(`📁 Archivos de base de datos verificados`);
+    console.log(`🟣 Visor - Purple Edition v3.0 (Supabase)`);
+    console.log(`📁 Datos guardados en Supabase (permanentes)`);
     console.log(`🔒 Enlaces protegidos con contraseña y expiración`);
     console.log(`🚫 Bloqueo de bots y rastreadores`);
-    console.log(`📝 Función de renombrar RIDs activada`);
 });
