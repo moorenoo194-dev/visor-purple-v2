@@ -11,7 +11,7 @@ app.use(express.json());
 app.use(express.static('.'));
 
 // ============================================================
-//  🔥 CONFIGURACIÓN DE SUPABASE (TUS DATOS)
+//  🔥 CONFIGURACIÓN DE SUPABASE
 // ============================================================
 const SUPABASE_URL = 'https://cjfwowcbuuozeefmdqln.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNqZndvd2NidXVvemVlZm1kcWxuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI4OTcxNzMsImV4cCI6MjA5ODQ3MzE3M30.zWNTmg6rZCFpjwrY99RvzgGmtAvVZAM9_5X_ss4OszA';
@@ -58,173 +58,26 @@ async function getGeoLocation(ip) {
 }
 
 // ============================================================
-//  🔒 GENERAR CONTRASEÑA ALEATORIA
-// ============================================================
-function generarContrasena() {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    let pass = '';
-    for (let i = 0; i < 8; i++) {
-        pass += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return pass;
-}
-
-// ============================================================
-//  🚫 BLOQUEAR BOTS
-// ============================================================
-function esBot(userAgent) {
-    if (!userAgent) return false;
-    const bots = [
-        'bot', 'crawler', 'spider', 'googlebot', 'bingbot',
-        'slurp', 'duckduckbot', 'baiduspider', 'yandexbot',
-        'facebookexternalhit', 'twitterbot', 'linkedinbot',
-        'whatsapp', 'telegram', 'discord', 'slack'
-    ];
-    return bots.some(b => userAgent.toLowerCase().includes(b));
-}
-
-// ============================================================
 //  🔥 ENDPOINT PRINCIPAL
 // ============================================================
 app.get('/i/:rid/:nombreImagen', async (req, res) => {
     const { rid, nombreImagen } = req.params;
-    const { device, pass } = req.query;
+    const { device } = req.query;
 
-    const userAgent = req.headers['user-agent'] || '';
-    if (esBot(userAgent)) {
-        return res.status(404).send('Not Found');
-    }
+    console.log(`📥 Petición recibida: /i/${rid}/${nombreImagen.substring(0, 30)}...`);
 
-    // 🔒 VERIFICAR SEGURIDAD
-    const { data: seguridad, error: secError } = await supabase
-        .from('seguridad')
-        .select('*')
-        .eq('rid', rid)
-        .single();
-
-    if (seguridad) {
-        if (new Date(seguridad.expiracion) < new Date()) {
-            return res.status(403).send(`
-                <html>
-                    <body style="background:#1a0a2e;display:flex;justify-content:center;align-items:center;height:100vh;color:#f87171;font-family:Arial;text-align:center;">
-                        <div>
-                            <h1>⏰ Enlace expirado</h1>
-                            <p>Este enlace ya no está disponible</p>
-                        </div>
-                    </body>
-                </html>
-            `);
-        }
-
-        if (!pass) {
-            return res.send(`
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <meta charset="UTF-8" />
-                    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-                    <title>🔒 Enlace protegido</title>
-                    <style>
-                        * { margin:0; padding:0; box-sizing:border-box; font-family:Arial,sans-serif; }
-                        body { background:#1a0a2e; min-height:100vh; display:flex; justify-content:center; align-items:center; padding:20px; }
-                        .container { background:#2d1b4e; padding:40px; border-radius:16px; max-width:400px; width:100%; box-shadow:0 20px 60px rgba(0,0,0,0.7); border:1px solid rgba(180,100,255,0.12); text-align:center; }
-                        h1 { color:#d4b8ff; font-size:24px; margin-bottom:10px; }
-                        p { color:#a890c8; font-size:14px; margin-bottom:20px; }
-                        input { width:100%; padding:12px 16px; background:rgba(255,255,255,0.05); border:1px solid rgba(180,100,255,0.2); border-radius:10px; color:#e2d5f5; font-size:16px; margin-bottom:16px; text-align:center; }
-                        input:focus { outline:none; border-color:#a855f7; box-shadow:0 0 0 3px rgba(168,85,247,0.12); }
-                        button { width:100%; padding:12px; background:linear-gradient(135deg,#7c3aed,#6d28d9); color:white; border:none; border-radius:10px; font-size:16px; font-weight:600; cursor:pointer; transition:all 0.3s; }
-                        button:hover { transform:translateY(-2px); box-shadow:0 6px 25px rgba(124,58,237,0.4); }
-                        .emoji { font-size:48px; margin-bottom:15px; }
-                        .info { color:#7c6a9e; font-size:12px; margin-top:15px; }
-                        .error { color:#f87171; font-size:13px; margin-top:10px; display:none; }
-                    </style>
-                </head>
-                <body>
-                    <div class="container">
-                        <div class="emoji">🔒</div>
-                        <h1>Contenido protegido</h1>
-                        <p>Introduce la contraseña para ver la imagen</p>
-                        <form id="formPass">
-                            <input type="password" id="passInput" placeholder="Contraseña..." required autofocus />
-                            <button type="submit">🔓 Ver imagen</button>
-                        </form>
-                        <div class="info">💡 La contraseña te la ha proporcionado quien te envió el enlace</div>
-                        <div class="error" id="errorMsg">❌ Contraseña incorrecta</div>
-                    </div>
-                    <script>
-                        document.getElementById('formPass').addEventListener('submit', function(e) {
-                            e.preventDefault();
-                            const pass = document.getElementById('passInput').value.trim();
-                            const error = document.getElementById('errorMsg');
-                            if (!pass) return;
-
-                            fetch('/api/verify', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ rid: '${rid}', contrasena: pass })
-                            })
-                            .then(r => r.json())
-                            .then(data => {
-                                if (data.error) {
-                                    error.textContent = data.error;
-                                    error.style.display = 'block';
-                                    if (data.intentos_restantes !== undefined) {
-                                        error.textContent += \` (\${data.intentos_restantes} intentos restantes)\`;
-                                    }
-                                } else {
-                                    const urlActual = window.location.href.split('?')[0];
-                                    window.location.href = urlActual + '?pass=' + encodeURIComponent(pass);
-                                }
-                            })
-                            .catch(() => {
-                                error.textContent = '❌ Error al verificar';
-                                error.style.display = 'block';
-                            });
-                        });
-                    </script>
-                </body>
-                </html>
-            `);
-        }
-
-        const { data: verifyData } = await supabase
-            .from('seguridad')
-            .select('*')
-            .eq('rid', rid)
-            .single();
-
-        if (verifyData.contrasena !== pass) {
-            return res.status(403).send(`
-                <html>
-                    <body style="background:#1a0a2e;display:flex;justify-content:center;align-items:center;height:100vh;color:#f87171;font-family:Arial;text-align:center;">
-                        <div>
-                            <h1>❌ Contraseña incorrecta</h1>
-                            <p>No tienes permiso para ver esta imagen</p>
-                        </div>
-                    </body>
-                </html>
-            `);
-        }
-    }
-
-    // VERIFICAR ALIAS
-    const { data: aliasData } = await supabase
-        .from('aliases')
-        .select('rid')
-        .eq('alias', rid)
-        .single();
-
-    const ridOriginal = aliasData?.rid || rid;
-
+    // Decodificar la imagen
     let imgUrl;
     try {
         imgUrl = Buffer.from(nombreImagen.split('.')[0], 'base64').toString('utf-8');
+        console.log(`🖼️ Imagen decodificada: ${imgUrl.substring(0, 50)}...`);
     } catch (e) {
-        return res.status(404).send('Not Found');
+        console.error('❌ Error decodificando imagen:', e);
+        return res.status(400).send('Imagen no válida');
     }
 
-    if (!ridOriginal || !imgUrl) {
-        return res.status(404).send('Not Found');
+    if (!rid || !imgUrl) {
+        return res.status(400).send('Faltan parámetros');
     }
 
     // ============ REGISTRAR VISITA ============
@@ -237,14 +90,18 @@ app.get('/i/:rid/:nombreImagen', async (req, res) => {
         }
 
         const ip = getClientIP(req);
+        const userAgent = req.headers['user-agent'] || 'Desconocido';
         const date = new Date().toISOString().replace('T', ' ').slice(0, 19);
         const geo = await getGeoLocation(ip);
 
+        console.log(`📝 Registrando visita: RID=${rid}, IP=${ip}, País=${geo.pais}, Ciudad=${geo.ciudad}`);
+
+        // Guardar en Supabase
         const { error } = await supabase
             .from('registros')
             .insert([
                 {
-                    rid: ridOriginal,
+                    rid: rid,
                     ip: ip,
                     fecha: date,
                     pais: geo.pais,
@@ -258,14 +115,16 @@ app.get('/i/:rid/:nombreImagen', async (req, res) => {
 
         if (error) {
             console.error('❌ Error guardando en Supabase:', error);
+            // No fallar la redirección por un error de guardado
         } else {
-            console.log(`✅ Visita registrada para RID: ${ridOriginal} desde IP: ${ip}`);
+            console.log(`✅ Visita registrada correctamente para RID: ${rid}`);
         }
     } catch (e) {
         console.error('❌ Error registrando visita:', e);
     }
 
     // ============ REDIRIGIR A LA IMAGEN ============
+    console.log(`🔄 Redirigiendo a: ${imgUrl}`);
     if (imgUrl.startsWith('http://') || imgUrl.startsWith('https://')) {
         return res.redirect(imgUrl);
     }
@@ -275,224 +134,54 @@ app.get('/i/:rid/:nombreImagen', async (req, res) => {
         return res.sendFile(imagePath);
     }
 
-    res.status(404).send('Not Found');
-});
-
-// ============================================================
-//  🔐 VERIFICAR CONTRASEÑA
-// ============================================================
-app.post('/api/verify', async (req, res) => {
-    const { rid, contrasena } = req.body;
-
-    if (!rid || !contrasena) {
-        return res.status(400).json({ error: 'Faltan datos' });
-    }
-
-    const { data: config, error } = await supabase
-        .from('seguridad')
-        .select('*')
-        .eq('rid', rid)
-        .single();
-
-    if (!config) {
-        return res.status(404).json({ error: 'RID no encontrado o no protegido' });
-    }
-
-    if (new Date(config.expiracion) < new Date()) {
-        return res.status(403).json({ error: '❌ El enlace ha expirado' });
-    }
-
-    if (config.intentos >= config.max_intentos) {
-        return res.status(403).json({ error: '❌ Demasiados intentos fallidos' });
-    }
-
-    if (config.contrasena !== contrasena) {
-        await supabase
-            .from('seguridad')
-            .update({ intentos: config.intentos + 1 })
-            .eq('rid', rid);
-
-        return res.status(401).json({
-            error: '❌ Contraseña incorrecta',
-            intentos_restantes: config.max_intentos - config.intentos - 1
-        });
-    }
-
-    await supabase
-        .from('seguridad')
-        .update({ intentos: 0 })
-        .eq('rid', rid);
-
-    res.json({
-        mensaje: '✅ Contraseña correcta',
-        rid: rid
-    });
-});
-
-// ============================================================
-//  📝 CREAR/RENOMBRAR ALIAS
-// ============================================================
-app.post('/api/alias', async (req, res) => {
-    const { rid, alias } = req.body;
-
-    console.log(`📝 Recibida petición de renombrar: rid=${rid}, alias=${alias}`);
-
-    if (!rid || !alias) {
-        return res.status(400).json({ error: 'Faltan parámetros: rid y alias son obligatorios' });
-    }
-
-    // Verificar que el RID existe (tiene registros)
-    const { data: registros, error: regError } = await supabase
-        .from('registros')
-        .select('rid')
-        .eq('rid', rid)
-        .limit(1);
-
-    if (!registros || registros.length === 0) {
-        return res.status(404).json({ error: `El RID ${rid} no existe o no tiene registros` });
-    }
-
-    // Verificar que el alias no esté ya usado
-    const { data: aliasExistente } = await supabase
-        .from('aliases')
-        .select('alias')
-        .eq('alias', alias)
-        .single();
-
-    if (aliasExistente) {
-        return res.status(400).json({ error: `El alias '${alias}' ya está en uso` });
-    }
-
-    // Guardar el alias
-    const { error } = await supabase
-        .from('aliases')
-        .insert([{ alias, rid }]);
-
-    if (error) {
-        console.error('❌ Error guardando alias:', error);
-        return res.status(500).json({ error: 'Error al guardar el alias' });
-    }
-
-    console.log(`✅ Alias '${alias}' creado para el RID '${rid}'`);
-    res.json({
-        mensaje: `✅ Alias '${alias}' creado para el RID '${rid}'`,
-        rid: rid,
-        alias: alias
-    });
-});
-
-// ============================================================
-//  🔒 PROTEGER ENLACE
-// ============================================================
-app.post('/api/secure', async (req, res) => {
-    const { rid, contrasena, expiracion } = req.body;
-
-    if (!rid) {
-        return res.status(400).json({ error: 'Falta el RID' });
-    }
-
-    // Verificar que el RID existe
-    const { data: registros, error: regError } = await supabase
-        .from('registros')
-        .select('rid')
-        .eq('rid', rid)
-        .limit(1);
-
-    if (!registros || registros.length === 0) {
-        return res.status(404).json({ error: `El RID ${rid} no existe o no tiene registros` });
-    }
-
-    const pass = contrasena || generarContrasena();
-    const expira = expiracion || 7;
-
-    const fechaExpiracion = new Date();
-    fechaExpiracion.setDate(fechaExpiracion.getDate() + expira);
-
-    const { error } = await supabase
-        .from('seguridad')
-        .upsert({
-            rid: rid,
-            contrasena: pass,
-            creado: new Date().toISOString(),
-            expiracion: fechaExpiracion.toISOString(),
-            intentos: 0,
-            max_intentos: 5
-        }, { onConflict: 'rid' });
-
-    if (error) {
-        console.error('❌ Error guardando seguridad:', error);
-        return res.status(500).json({ error: 'Error al proteger el enlace' });
-    }
-
-    res.json({
-        mensaje: '✅ Enlace protegido con contraseña',
-        rid: rid,
-        contrasena: pass,
-        expiracion: fechaExpiracion.toISOString(),
-        dias: expira
-    });
+    // Si no hay imagen, mostrar un placeholder simple
+    res.send(`
+        <html>
+            <body style="background:#1a0a2e;display:flex;justify-content:center;align-items:center;height:100vh;color:#c084fc;font-family:Arial;text-align:center;">
+                <div>
+                    <h1>🖼️ Imagen registrada</h1>
+                    <p>La visita ha sido registrada correctamente</p>
+                    <p style="font-size:12px;color:#7c6a9e;">RID: ${rid}</p>
+                </div>
+            </body>
+        </html>
+    `);
 });
 
 // ============================================================
 //  OBTENER REGISTROS
 // ============================================================
 app.get('/api/records/:rid', async (req, res) => {
-    let rid = req.params.rid;
+    const rid = req.params.rid;
+    console.log(`📋 Buscando registros para RID: ${rid}`);
 
-    // Verificar si es un alias
-    const { data: aliasData } = await supabase
-        .from('aliases')
-        .select('rid')
-        .eq('alias', rid)
-        .single();
+    try {
+        const { data: records, error } = await supabase
+            .from('registros')
+            .select('*')
+            .eq('rid', rid)
+            .order('fecha', { ascending: false });
 
-    if (aliasData) {
-        rid = aliasData.rid;
+        if (error) {
+            console.error('❌ Error obteniendo registros:', error);
+            return res.status(500).json({ error: 'Error al obtener los registros' });
+        }
+
+        if (!records || records.length === 0) {
+            console.log(`📭 No hay registros para RID: ${rid}`);
+            return res.status(404).json({ message: 'Sin registros' });
+        }
+
+        console.log(`✅ ${records.length} registros encontrados para RID: ${rid}`);
+        res.json({
+            rid: rid,
+            count: records.length,
+            records
+        });
+    } catch (e) {
+        console.error('❌ Error:', e);
+        res.status(500).json({ error: 'Error interno' });
     }
-
-    const { data: records, error } = await supabase
-        .from('registros')
-        .select('*')
-        .eq('rid', rid)
-        .order('fecha', { ascending: false });
-
-    if (error) {
-        console.error('❌ Error obteniendo registros:', error);
-        return res.status(500).json({ error: 'Error al obtener los registros' });
-    }
-
-    if (!records || records.length === 0) {
-        return res.status(404).json({ message: 'Sin registros' });
-    }
-
-    res.json({
-        rid: rid,
-        count: records.length,
-        records
-    });
-});
-
-// ============================================================
-//  OBTENER INFO DE SEGURIDAD
-// ============================================================
-app.get('/api/security/:rid', async (req, res) => {
-    const { rid } = req.params;
-
-    const { data: config, error } = await supabase
-        .from('seguridad')
-        .select('*')
-        .eq('rid', rid)
-        .single();
-
-    if (!config) {
-        return res.json({ protegido: false });
-    }
-
-    res.json({
-        protegido: true,
-        expiracion: config.expiracion,
-        dias_restantes: Math.ceil((new Date(config.expiracion) - new Date()) / (1000 * 60 * 60 * 24))
-    });
 });
 
 // ============================================================
@@ -500,8 +189,7 @@ app.get('/api/security/:rid', async (req, res) => {
 // ============================================================
 app.listen(PORT, () => {
     console.log(`✅ Servidor corriendo en puerto ${PORT}`);
-    console.log(`🟣 Visor - Purple Edition v3.0 (Supabase)`);
-    console.log(`📁 Datos guardados en Supabase (permanentes)`);
-    console.log(`🔒 Enlaces protegidos con contraseña y expiración`);
-    console.log(`🚫 Bloqueo de bots y rastreadores`);
+    console.log(`🟣 Visor - v3.0 (Supabase)`);
+    console.log(`📁 Datos guardados en Supabase`);
+    console.log(`🌐 URL del servidor: http://localhost:${PORT}`);
 });
