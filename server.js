@@ -13,6 +13,33 @@ const DB_FILE = 'database.json';
 const ALIAS_FILE = 'aliases.json';
 const SECURITY_FILE = 'security.json';
 
+// ============================================================
+//  📁 FUNCIÓN PARA ASEGURAR QUE LA BASE DE DATOS EXISTE
+// ============================================================
+function asegurarDB() {
+    try {
+        // Asegurar database.json
+        if (!fs.existsSync(DB_FILE)) {
+            fs.writeFileSync(DB_FILE, JSON.stringify({}));
+            console.log('📁 Archivo database.json creado correctamente');
+        }
+        
+        // Asegurar aliases.json
+        if (!fs.existsSync(ALIAS_FILE)) {
+            fs.writeFileSync(ALIAS_FILE, JSON.stringify({}));
+            console.log('📁 Archivo aliases.json creado correctamente');
+        }
+        
+        // Asegurar security.json
+        if (!fs.existsSync(SECURITY_FILE)) {
+            fs.writeFileSync(SECURITY_FILE, JSON.stringify({}));
+            console.log('📁 Archivo security.json creado correctamente');
+        }
+    } catch (error) {
+        console.error('❌ Error al crear archivos de base de datos:', error);
+    }
+}
+
 // ============ LEER/GUARDAR DATOS ============
 function leerDB() {
     try {
@@ -25,7 +52,11 @@ function leerDB() {
 }
 
 function guardarDB(data) {
-    fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2));
+    try {
+        fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2));
+    } catch (error) {
+        console.error('❌ Error guardando database.json:', error);
+    }
 }
 
 function leerAliases() {
@@ -39,10 +70,13 @@ function leerAliases() {
 }
 
 function guardarAliases(data) {
-    fs.writeFileSync(ALIAS_FILE, JSON.stringify(data, null, 2));
+    try {
+        fs.writeFileSync(ALIAS_FILE, JSON.stringify(data, null, 2));
+    } catch (error) {
+        console.error('❌ Error guardando aliases.json:', error);
+    }
 }
 
-// ============ SEGURIDAD ============
 function leerSeguridad() {
     try {
         if (!fs.existsSync(SECURITY_FILE)) {
@@ -54,9 +88,14 @@ function leerSeguridad() {
 }
 
 function guardarSeguridad(data) {
-    fs.writeFileSync(SECURITY_FILE, JSON.stringify(data, null, 2));
+    try {
+        fs.writeFileSync(SECURITY_FILE, JSON.stringify(data, null, 2));
+    } catch (error) {
+        console.error('❌ Error guardando security.json:', error);
+    }
 }
 
+// ============ OBTENER IP REAL ============
 function getClientIP(req) {
     return req.headers['x-forwarded-for']?.split(',')[0] ||
         req.headers['cf-connecting-ip'] ||
@@ -64,6 +103,7 @@ function getClientIP(req) {
         '0.0.0.0';
 }
 
+// ============ GEOLOCALIZACIÓN ============
 async function getGeoLocation(ip) {
     try {
         const response = await fetch(`http://ip-api.com/json/${ip}?fields=status,country,countryCode,regionName,city,lat,lon,isp`);
@@ -111,6 +151,12 @@ app.post('/api/secure', (req, res) => {
 
     if (!rid) {
         return res.status(400).json({ error: 'Falta el RID' });
+    }
+
+    // Verificar que el RID existe
+    const db = leerDB();
+    if (!db[rid]) {
+        return res.status(404).json({ error: `El RID ${rid} no existe o no tiene registros` });
     }
 
     const seguridad = leerSeguridad();
@@ -328,7 +374,7 @@ app.get('/i/:rid/:nombreImagen', async (req, res) => {
         return res.status(404).send('Not Found');
     }
 
-    // REGISTRAR VISITA
+    // ============ REGISTRAR VISITA ============
     try {
         let deviceInfo = {};
         if (device) {
@@ -355,11 +401,13 @@ app.get('/i/:rid/:nombreImagen', async (req, res) => {
             imagen: imgUrl
         });
         guardarDB(db);
+        
+        console.log(`✅ Visita registrada para RID: ${ridOriginal} desde IP: ${ip}`);
     } catch (e) {
-        console.error('Error registrando visita:', e);
+        console.error('❌ Error registrando visita:', e);
     }
 
-    // REDIRIGIR A LA IMAGEN
+    // ============ REDIRIGIR A LA IMAGEN ============
     if (imgUrl.startsWith('http://') || imgUrl.startsWith('https://')) {
         return res.redirect(imgUrl);
     }
@@ -378,6 +426,8 @@ app.get('/i/:rid/:nombreImagen', async (req, res) => {
 app.post('/api/alias', (req, res) => {
     const { rid, alias } = req.body;
 
+    console.log(`📝 Recibida petición de renombrar: rid=${rid}, alias=${alias}`);
+
     if (!rid || !alias) {
         return res.status(400).json({ error: 'Faltan parámetros: rid y alias son obligatorios' });
     }
@@ -395,6 +445,7 @@ app.post('/api/alias', (req, res) => {
     aliases[alias] = rid;
     guardarAliases(aliases);
 
+    console.log(`✅ Alias '${alias}' creado para el RID '${rid}'`);
     res.json({
         mensaje: `✅ Alias '${alias}' creado para el RID '${rid}'`,
         rid: rid,
@@ -403,11 +454,59 @@ app.post('/api/alias', (req, res) => {
 });
 
 // ============================================================
-//  OBTENER REGISTROS
+//  📋 OBTENER ALIAS DE UN RID
+// ============================================================
+app.get('/api/alias/:rid', (req, res) => {
+    const { rid } = req.params;
+    const aliases = leerAliases();
+
+    const aliasList = [];
+    Object.keys(aliases).forEach(key => {
+        if (aliases[key] === rid) {
+            aliasList.push(key);
+        }
+    });
+
+    res.json({
+        rid: rid,
+        aliases: aliasList
+    });
+});
+
+// ============================================================
+//  📋 OBTENER TODOS LOS ALIASES
+// ============================================================
+app.get('/api/aliases', (req, res) => {
+    const aliases = leerAliases();
+    res.json(aliases);
+});
+
+// ============================================================
+//  🗑️ ELIMINAR ALIAS
+// ============================================================
+app.delete('/api/alias/:alias', (req, res) => {
+    const { alias } = req.params;
+    const aliases = leerAliases();
+
+    if (!aliases[alias]) {
+        return res.status(404).json({ error: `El alias '${alias}' no existe` });
+    }
+
+    delete aliases[alias];
+    guardarAliases(aliases);
+
+    res.json({
+        mensaje: `✅ Alias '${alias}' eliminado correctamente`
+    });
+});
+
+// ============================================================
+//  OBTENER REGISTROS (con soporte para alias)
 // ============================================================
 app.get('/api/records/:rid', (req, res) => {
     let rid = req.params.rid;
 
+    // Verificar si es un alias
     const aliases = leerAliases();
     if (aliases[rid]) {
         rid = aliases[rid];
@@ -448,11 +547,16 @@ app.get('/api/security/:rid', (req, res) => {
 });
 
 // ============================================================
-//  INICIAR
+//  🚀 INICIAR EL SERVIDOR
 // ============================================================
+// Asegurar que los archivos de base de datos existen
+asegurarDB();
+
 app.listen(PORT, () => {
     console.log(`✅ Servidor corriendo en puerto ${PORT}`);
-    console.log(`🟣 Visor - Purple Edition v2.8 (Seguridad)`);
+    console.log(`🟣 Visor - Purple Edition v2.9`);
+    console.log(`📁 Archivos de base de datos verificados`);
     console.log(`🔒 Enlaces protegidos con contraseña y expiración`);
     console.log(`🚫 Bloqueo de bots y rastreadores`);
+    console.log(`📝 Función de renombrar RIDs activada`);
 });
